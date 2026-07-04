@@ -1,0 +1,21 @@
+# ===========================================================================
+# E3 causal-patching configuration (task §7). Decision THRESHOLDS are NOT here
+# — they live in the researcher-authored preregistration.yaml (causal_criteria).
+# This file only holds the mechanical knobs (which head-sets, which patch mode).
+# ===========================================================================
+e3:
+  # Head-set sizes to patch (top-k from the detection artifact, §4.4).
+  k_list: [1, 5, 10]
+
+  # first_step  = patch z_h at generation step 1 only (headline).
+  # sustained   = patch every generated step (E5 material, not headline).
+  patch_mode: "first_step"
+
+  # Random-control head-set: same k, sampled uniformly from NON-retrieval heads,
+  # resampled per pair with a recorded seed derived from the pair + this base.
+  random_control_seed_base: 90000
+
+  # Donor activation store (compact .npz, per §4.4). Written under
+  # paths.output.donor_store_dir.
+  donor_store:
+    dtype: "float32"          # bf16 captured -> upcast to fp32 on disk

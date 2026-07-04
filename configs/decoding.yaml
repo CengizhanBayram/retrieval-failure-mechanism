@@ -1,0 +1,46 @@
+# ===========================================================================
+# The ONE decoding spec, used by EVERY experiment (task §1.4). Deterministic,
+# greedy. No experiment overrides these.
+# ===========================================================================
+decoding:
+  do_sample: false          # greedy; temperature/top_p are ignored by construction
+  num_beams: 1
+  max_new_tokens: 16
+  # Stop as soon as a newline is emitted or EOS is reached. The grader (§4.5)
+  # reads only the text before the first newline. Implemented via a stopping
+  # criterion on the "\n" token id(s) plus the tokenizer eos.
+  stop_on_newline: true
+  stop_on_eos: true
+
+# Compute dtype for weights/activations on the GPU run (task §1.10). bf16.
+dtype: "bfloat16"
+
+# Attention backend policy (task §1.5).
+#   e1: fastest available exact backend, no attention materialised.
+#   capture: the manual rows are RECOMPUTED (hook pre-RoPE q at q_proj, apply the
+#            model's own rotary with the answer step's position_ids, read K from
+#            the KV cache), so sdpa is fine for most models — we do NOT hook
+#            inside the sdpa call. GEMMA-2 IS DIFFERENT: HF forces Gemma-2 to
+#            eager because of attention-logit softcapping, and the manual row
+#            must apply softcapping + query_pre_attn_scalar (read from config).
+#            So Gemma-2 capture runs in EAGER by design — this is the expected
+#            path, documented in README, not a silent fallback (§1.9).
+attn_implementation:
+  e1: "sdpa"
+  capture: "sdpa"          # gemma2 auto-promoted to eager (softcapping); see README
+  patching: "sdpa"
+
+# Batching for E1 throughput (task §1.10): TOKEN-BUDGETED, length-sorted. A fixed
+# batch size OOMs at long context (16k KV-cache dominates) while wasting the GPU
+# at short context; a fixed token budget auto-shrinks the batch as context grows
+# (e.g. 32768 budget -> 16 samples at 2k, 2 at 16k). This keeps the OOM fallback
+# (16384->12288) reserved for genuine context-driven OOM, not batch-driven OOM.
+batch:
+  max_tokens_per_batch: 32768   # sum of prompt lengths per E1 generation batch
+  max_samples_per_batch: 32     # hard cap regardless of token budget
+  min_samples_per_batch: 1      # a single 16k sample is always allowed
+  length_sorted: true
+
+# Padding side for batched generation. Left padding keeps the answer step at a
+# fixed offset from the true prompt end for decoder-only LMs.
+padding_side: "left"

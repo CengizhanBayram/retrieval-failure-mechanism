@@ -1,0 +1,207 @@
+# ===========================================================================
+# E1 grid + procedural probe resources (task §4.1, §5).
+#
+# NOTHING here is a decision threshold — those live in the researcher-authored
+# preregistration.yaml. This file is the STIMULUS design: the cell grid and the
+# templates/vocab the probe generator draws from. All probe text is generated
+# from these; no external corpora are ever used (§12).
+# ===========================================================================
+
+# ---- E1 cell grid (§5) ----------------------------------------------------
+grid:
+  context_length: [2048, 4096, 8192, 16384]
+  needle_position: [0.1, 0.3, 0.5, 0.7, 0.9]
+  distractor_count: [0, 2, 5, 10]
+  similarity: ["shell_same", "shell_diff"]
+  # The 0-distractor rows are the clean baseline and are capture-free by
+  # construction (no distractor spans). similarity is irrelevant when count==0;
+  # the grid builder emits a single 0-distractor cell per (ctx, pos) tagged
+  # similarity="none".
+
+# Documented OOM fallback (§5, §1.9): the ONE permitted fallback. When a run
+# OOMs at 16384, replace it with 12288, log LOUDLY, and flag it in outputs.
+oom_fallback:
+  from_context_length: 16384
+  to_context_length: 12288
+
+# ---- Probe text skeleton (§4.1) -------------------------------------------
+probe:
+  # A short, constant preamble (same tokens for every probe of every cell) so
+  # the model is oriented. Being constant, it does not affect skeleton
+  # alignment across a cell's samples.
+  preamble: "Read the following text carefully. It contains one access code you must remember.\n\n"
+
+  needle_template: "The access code for the {ADJ} {NOUN} is {VALUE}."
+
+  distractor_templates:
+    # identical sentence template, different ADJ+NOUN, different VALUE
+    shell_same: "The access code for the {ADJ} {NOUN} is {VALUE}."
+    # paraphrased template, different key, different VALUE
+    shell_diff: "Remember that {NOUN} {ADJ} unlocks with {VALUE}."
+
+  question_template: "\n\nWhat is the access code for the {ADJ} {NOUN}? Answer with the code only."
+
+  # VALUE = uppercase alphanumeric. Ambiguous glyphs (0/O, 1/I) are excluded so
+  # a decoded value is unambiguous for the grader. Rejection-sampling forces a
+  # per-cell canonical TOKEN length (§4.1 token-skeleton alignment).
+  value:
+    alphabet: "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    char_len: 8
+    # max rejection-sampling tries to hit the cell's canonical token length
+    # before failing loudly (ProbeError).
+    max_value_tries: 4000
+
+  # Slot vocab. ADJ and NOUN are disjoint pools (an adjective is never a noun),
+  # so a key is always ADJ+NOUN. At startup the generator filters each pool
+  # through the model's tokenizer to the subset that tokenises to a fixed
+  # (single) token WITH a leading space, giving identical slot token-lengths
+  # across a cell's samples. `min_vocab_after_filter` guards that enough
+  # survive for the largest cell (needle + all distractors, drawn w/o
+  # replacement); otherwise fail loudly.
+  min_vocab_after_filter: 20
+  adjectives:
+    - crimson
+    - golden
+    - silent
+    - ancient
+    - hollow
+    - frozen
+    - amber
+    - velvet
+    - copper
+    - marble
+    - hidden
+    - rusty
+    - gentle
+    - narrow
+    - distant
+    - bitter
+    - polished
+    - wooden
+    - silver
+    - shallow
+    - rugged
+    - solemn
+    - vivid
+    - fragrant
+    - restless
+    - humble
+    - luminous
+    - weathered
+    - nimble
+    - stubborn
+    - graceful
+    - dusty
+    - radiant
+    - sturdy
+    - somber
+    - tranquil
+    - jagged
+    - mellow
+    - brittle
+    - spirited
+  nouns:
+    - lantern
+    - harbor
+    - meadow
+    - anchor
+    - cavern
+    - orchard
+    - beacon
+    - tunnel
+    - falcon
+    - ledger
+    - furnace
+    - compass
+    - thicket
+    - glacier
+    - satchel
+    - turbine
+    - cottage
+    - vessel
+    - pillar
+    - trolley
+    - cavalry
+    - foundry
+    - reservoir
+    - hamlet
+    - lattice
+    - quarry
+    - saddle
+    - windmill
+    - archway
+    - cistern
+    - drawbridge
+    - workshop
+    - meridian
+    - promenade
+    - courtyard
+    - aqueduct
+    - belfry
+    - granary
+    - paddock
+    - vineyard
+
+  # Filler bank (~30 templates). Pure padding: NO "access code", NO "unlocks",
+  # NO uppercase alphanumeric codes, NO key/value patterns (§4.1). {TOPIC} is
+  # drawn from topic_words; filler for a cell is a deterministic function of the
+  # cell (identical across the cell's samples, keeping the skeleton fixed).
+  filler_templates:
+    - "The committee spent the afternoon discussing the future of the {TOPIC}."
+    - "Many travellers pass through the region hoping to glimpse the {TOPIC}."
+    - "Historians still argue about the true origin of the {TOPIC}."
+    - "Every spring the villagers gather to celebrate the {TOPIC}."
+    - "A gentle rain fell over the valley near the {TOPIC}."
+    - "The old librarian catalogued every mention of the {TOPIC}."
+    - "Students often write essays about the meaning of the {TOPIC}."
+    - "In the market square people traded stories about the {TOPIC}."
+    - "The engineer sketched a rough plan beside the {TOPIC}."
+    - "Long shadows stretched across the field toward the {TOPIC}."
+    - "Nobody could quite explain the popularity of the {TOPIC}."
+    - "The children invented a song about the wandering {TOPIC}."
+    - "Each morning the baker walked past the quiet {TOPIC}."
+    - "Scholars from distant cities came to study the {TOPIC}."
+    - "The festival lasted three days beneath the great {TOPIC}."
+    - "A single lamp lit the corridor leading to the {TOPIC}."
+    - "The captain noted the weather before approaching the {TOPIC}."
+    - "Rumours spread quickly about the newly repaired {TOPIC}."
+    - "Painters found endless inspiration in the {TOPIC}."
+    - "The council voted to preserve the historic {TOPIC}."
+    - "Farmers measured the harvest against the shadow of the {TOPIC}."
+    - "The apprentice swept the floor around the {TOPIC}."
+    - "Visitors left small tokens near the ancient {TOPIC}."
+    - "The map showed a winding road toward the {TOPIC}."
+    - "Musicians tuned their instruments beside the {TOPIC}."
+    - "The clerk recorded the arrival of goods at the {TOPIC}."
+    - "Fog rolled in slowly and hid the distant {TOPIC}."
+    - "The gardener trimmed the hedges surrounding the {TOPIC}."
+    - "Late at night the watchman circled the silent {TOPIC}."
+    - "A curious cat wandered along the wall of the {TOPIC}."
+    - "The two friends argued cheerfully about the {TOPIC}."
+    - "Trade caravans rested for a week outside the {TOPIC}."
+  topic_words:
+    - riverbank
+    - observatory
+    - marketplace
+    - lighthouse
+    - monastery
+    - greenhouse
+    - archive
+    - shipyard
+    - plaza
+    - fountain
+    - garden
+    - bridge
+    - mill
+    - tower
+    - harbor
+    - orchard
+    - gallery
+    - workshop
+    - courtyard
+    - terrace
+    - warehouse
+    - chapel
+    - pavilion
+    - boulevard
+    - embankment
