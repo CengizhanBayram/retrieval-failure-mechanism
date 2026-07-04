@@ -39,10 +39,9 @@ def _manual_row(model, tokenizer, input_ids, layer, head):
         position_ids = torch.arange(0, ids.shape[1], device=device).unsqueeze(0)
         out = model(input_ids=ids, position_ids=position_ids, use_cache=True)
         cos, sin = CAP._rope_cos_sin(model, position_ids)
-        q_proj_out = tap.store[layer]
-        hd = q_proj_out.shape[-1] // n_heads
-        q_last = q_proj_out[:, -1, :].view(q_proj_out.shape[0], n_heads, hd)
-        q_rot = CAP._apply_rope(q_last, cos[:, -1, :], sin[:, -1, :])
+        q_rot = CAP.query_rotated_last(model, layer, tap.store[layer],
+                                       cos[:, -1, :], sin[:, -1, :], n_heads,
+                                       panel.head_dim(model))
         key_cache = CAP._layer_keys(out.past_key_values, layer)
         return CAP._row_for_head(model, layer, head, q_rot, key_cache,
                                  ids.shape[1] - 1, n_heads, n_kv, scale, softcap)
@@ -56,6 +55,12 @@ def test_manual_row_matches_eager_llama(tiny_llama):
 def test_manual_row_matches_eager_gemma2(tiny_gemma2):
     # Gemma-2: exercises query_pre_attn_scalar + softcap + sliding-window masking.
     model, tok = tiny_gemma2
+    _check_row_matches(model, tok)
+
+
+def test_manual_row_matches_eager_olmo2(tiny_olmo2):
+    # OLMo-2: exercises QK-norm (q_norm applied before RoPE).
+    model, tok = tiny_olmo2
     _check_row_matches(model, tok)
 
 

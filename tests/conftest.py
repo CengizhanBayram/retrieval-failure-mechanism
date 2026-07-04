@@ -93,6 +93,7 @@ _FAST_TOK_CANDIDATES = ["Qwen/Qwen2.5-0.5B-Instruct", "hf-internal-testing/llama
 # Tiny random models for capture/patching/gqa mechanism tests.
 _TINY_LLAMA = "hf-internal-testing/tiny-random-LlamaForCausalLM"
 _TINY_GEMMA2 = "hf-internal-testing/tiny-random-Gemma2ForCausalLM"
+_TINY_OLMO2 = "hf-internal-testing/tiny-random-Olmo2ForCausalLM"
 
 
 @pytest.fixture(scope="session")
@@ -117,4 +118,12 @@ def tiny_gemma2():
     got = _try_load_model(_TINY_GEMMA2, attn_implementation="eager")
     if got is None:
         pytest.skip(f"{_TINY_GEMMA2} not downloadable")
+    return got
+
+
+@pytest.fixture(scope="session")
+def tiny_olmo2():
+    got = _try_load_model(_TINY_OLMO2, attn_implementation="eager")
+    if got is None:
+        pytest.skip(f"{_TINY_OLMO2} not downloadable")
     return got

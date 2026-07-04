@@ -33,7 +33,9 @@ from failure_mech.provenance import make_provenance  # noqa: E402
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("e4")
 
-DEFAULT_MODELS = ["llama31_8b_instruct", "gemma2_9b_it", "mistral_7b_instruct", "qwen25_7b_instruct"]
+DEFAULT_MODELS = ["llama31_8b_instruct", "gemma2_9b_it", "mistral_7b_instruct",
+                  "qwen25_7b_instruct", "olmo2_7b_instruct", "phi35_mini",
+                  "qwen25_3b_instruct"]
 
 
 def _gemma_sliding_annotation(paths_cfg, panel_reg, model_key, det) -> dict | None:

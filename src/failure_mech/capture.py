@@ -58,13 +58,43 @@ def _rope_cos_sin(model, position_ids):
 
 
 def _apply_rope(q_last, cos_p, sin_p):
-    """Rotate q at one position for every head.
+    """Rotate q at one position for every head, partial-rotary aware.
 
-    q_last: [batch, n_heads, head_dim] (pre-RoPE). cos_p/sin_p: [batch, head_dim].
+    q_last: [batch, n_heads, head_dim] (pre-RoPE). cos_p/sin_p: [batch, rot_dim].
+    When rot_dim < head_dim (e.g. Phi-3 partial rotary) only the first rot_dim
+    channels are rotated; the tail passes through unchanged, exactly as the model
+    applies it.
     """
+    import torch
+    rot_dim = cos_p.shape[-1]
     cos = cos_p[:, None, :]
     sin = sin_p[:, None, :]
-    return q_last * cos + _rotate_half(q_last) * sin
+    if rot_dim == q_last.shape[-1]:
+        return q_last * cos + _rotate_half(q_last) * sin
+    rot, pas = q_last[..., :rot_dim], q_last[..., rot_dim:]
+    rot = rot * cos + _rotate_half(rot) * sin
+    return torch.cat((rot, pas), dim=-1)
+
+
+def query_rotated_last(model, layer, proj_out, cos_p, sin_p, n_heads, head_dim):
+    """Post-RoPE query at the LAST position for every head, family-aware.
+
+    Handles the three q pipelines in the panel:
+      * separate ``q_proj`` (Llama/Qwen/Mistral/Gemma-2);
+      * fused ``qkv_proj`` (Phi-3): q is the first ``n_heads*head_dim`` block;
+      * ``q_norm`` after projection, before RoPE (OLMo-2 QK-norm).
+    ``proj_out`` is the tapped projection output ([batch, seq, proj_dim]).
+    """
+    attn = panel.attn_module(model, layer)
+    raw_last = proj_out[:, -1, :]                     # [batch, proj_dim]
+    q_dim = n_heads * head_dim
+    if getattr(attn, "q_proj", None) is None and getattr(attn, "qkv_proj", None) is not None:
+        raw_last = raw_last[:, :q_dim]                # fused qkv -> q is first block
+    q_norm = getattr(attn, "q_norm", None)
+    if q_norm is not None:                            # OLMo-2: norm before reshape/RoPE
+        raw_last = q_norm(raw_last)
+    q_last = raw_last.reshape(raw_last.shape[0], n_heads, head_dim)
+    return _apply_rope(q_last, cos_p, sin_p)
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +135,9 @@ class HeadMass:
 # ---------------------------------------------------------------------------
 
 class _QProjTap:
-    """Forward-hook manager stashing pre-RoPE q_proj output for target layers."""
+    """Forward-hook manager stashing the pre-RoPE query projection for target
+    layers. Hooks ``q_proj`` when present, else the fused ``qkv_proj`` (Phi-3);
+    the caller slices out the q block."""
 
     def __init__(self, model, layers: set[int]):
         self.model = model
@@ -116,13 +148,18 @@ class _QProjTap:
     def __enter__(self):
         for li in self.layers:
             attn = panel.attn_module(self.model, li)
+            proj = getattr(attn, "q_proj", None) or getattr(attn, "qkv_proj", None)
+            if proj is None:
+                raise AttributeError(
+                    f"Layer {li} self_attn has neither q_proj nor qkv_proj; "
+                    "capture cannot read the query projection.")
 
             def make(idx):
                 def hook(_m, _inp, out):
                     self.store[idx] = out.detach()
                 return hook
 
-            self._handles.append(attn.q_proj.register_forward_hook(make(li)))
+            self._handles.append(proj.register_forward_hook(make(li)))
         return self
 
     def __exit__(self, *exc):
@@ -221,11 +258,11 @@ def capture_head_masses(
             cos, sin = _rope_cos_sin(model, position_ids)
             cos_p, sin_p = cos[:, -1, :], sin[:, -1, :]    # last position
 
+            head_dim = panel.head_dim(model)
             for li in layers:
-                q_proj_out = tap.store[li]                 # [batch, seq, n_heads*head_dim]
-                hd = q_proj_out.shape[-1] // n_heads
-                q_last = q_proj_out[:, -1, :].view(q_proj_out.shape[0], n_heads, hd)
-                q_rot = _apply_rope(q_last, cos_p, sin_p)  # [batch, n_heads, head_dim]
+                q_proj_out = tap.store[li]                 # [batch, seq, proj_dim]
+                q_rot = query_rotated_last(model, li, q_proj_out, cos_p, sin_p,
+                                           n_heads, head_dim)  # [batch, n_heads, head_dim]
                 key_cache = _layer_keys(past, li)          # [batch, n_kv, seq, head_dim]
                 for (l2, h2) in heads:
                     if l2 != li:

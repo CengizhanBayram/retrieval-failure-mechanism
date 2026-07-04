@@ -15,6 +15,23 @@ repos, which it imports and never edits:
   **detection artifacts** (`datas/results/profile/{model}_seed{seed}.json`,
   the ranked retrieval-head lists).
 
+### Model panel (7 instruct models, 6 families, GQA + MHA)
+
+| task key | family | attention | θ (rope) | GPU |
+|---|---|---|---|---|
+| `llama31_8b_instruct` | llama | GQA 32/8 | 500k | L4 |
+| `qwen25_7b_instruct` | qwen | GQA 28/4 | 1M | L4 |
+| `gemma2_9b_it` | gemma | GQA 16/8 + softcap, local/global | 10k | A100 |
+| `mistral_7b_instruct` | mistral | GQA 32/8 | 1M | L4 |
+| `olmo2_7b_instruct` | olmo | **MHA 32/32 + QK-norm** | 500k | L4 |
+| `phi35_mini` | phi | **MHA 32/32, fused qkv** | 10k | L4 |
+| `qwen25_3b_instruct` | qwen | GQA 16/2 (size axis) | 1M | L4 |
+
+Every model already has a Part-2 detection artifact, so Part 3 never re-detects.
+`capture.py` is family-aware: standard GQA, Gemma-2 (query-scale + softcap +
+sliding window), OLMo-2 (QK-norm before RoPE), and Phi-3 (fused-qkv split +
+partial rotary) — each validated by the eager-reference test (< 1e-3).
+
 Everything measured here is gated on a **researcher-authored pre-registration**
 and every reported number carries a **provenance record**. No module in this
 package interprets a result — measurement only.
@@ -89,8 +106,10 @@ python scripts/e2_signatures.py --model llama31_8b_instruct
 # E3 — bidirectional causal patching (repair/break/random/no-patch/self-patch)
 python scripts/e3_causal.py --model llama31_8b_instruct
 
-# E4 — cross-family table + authoritative BH across {4 models × 2 directions}
-python scripts/e4_families.py --models llama31_8b_instruct gemma2_9b_it mistral_7b_instruct qwen25_7b_instruct
+# E4 — cross-family table + authoritative BH across {N models × 2 directions}
+# (default --models is the full 7-model panel; listed explicitly here)
+python scripts/e4_families.py --models llama31_8b_instruct gemma2_9b_it \
+    mistral_7b_instruct qwen25_7b_instruct olmo2_7b_instruct phi35_mini qwen25_3b_instruct
 
 # E5 — robustness (Wu head list, sensitivity k, seed repeats, answer_steps=3)
 python scripts/e5_robustness.py --model llama31_8b_instruct

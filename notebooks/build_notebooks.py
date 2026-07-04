@@ -195,7 +195,9 @@ def setup_cells(extra_intro: str = "") -> list[dict]:
     return [md(intro), SETUP_GPU_DRIVE, SETUP_PIP, SETUP_CLONE, SETUP_PATHS, PREREG_GATE]
 
 
-MODELS = ["llama31_8b_instruct", "gemma2_9b_it", "mistral_7b_instruct", "qwen25_7b_instruct"]
+MODELS = ["llama31_8b_instruct", "gemma2_9b_it", "mistral_7b_instruct",
+          "qwen25_7b_instruct", "olmo2_7b_instruct", "phi35_mini",
+          "qwen25_3b_instruct"]
 
 
 # ---------------------------------------------------------------------------
@@ -218,10 +220,14 @@ def nb_00() -> dict:
 run(['-m', 'pytest', 'tests/test_prereg.py', 'tests/test_stats.py',
      'tests/test_grading.py', 'tests/test_classify.py', 'tests/test_probes.py', '-q'])
 """))
-    cells.append(md("## Eager-reference capture check on the 4 PINNED models (§4.3, §10)\n"
+    cells.append(md("## Eager-reference capture check on the 7 PINNED models (§4.3, §10)\n"
                     "For each model: load at its pinned SHA in **eager** (Gemma-2 requires "
                     "eager for softcapping), then confirm the manual row matches the model's "
-                    "own attention row to < 1e-3 for several detected retrieval heads."))
+                    "own attention row to < 1e-3 for several detected retrieval heads. This "
+                    "exercises every attention pipeline in the panel: standard GQA "
+                    "(Llama/Qwen/Mistral), Gemma-2 softcap + query-scale + sliding window, "
+                    "OLMo-2 QK-norm, and Phi-3 fused-qkv + partial rotary. **This is the "
+                    "arbiter — trust no capture number until every model prints PASS.**"))
     cells.append(code(r"""
 import numpy as np, torch
 from failure_mech import panel as P, detect, capture as CAP

@@ -46,10 +46,24 @@ output:
   checkpoints_dir: "./results/checkpoints"
   donor_store_dir: "./results/donors"
 
-# Map task-spec model keys (§2) -> Part-2 panel.yaml keys. The suite iterates
-# these four; each resolves to a PINNED commit SHA in panel.yaml.
+# Map task-spec model keys (§2) -> Part-2 panel.yaml keys. Each resolves to a
+# PINNED commit SHA in panel.yaml, and each already has a Part-2 detection
+# artifact (datas/results/profile/<panel_key>_seed42.json).
+#
+# The panel was expanded from the original 4 to a balanced 7 instruct models
+# spanning 6 families and both attention structures (GQA + MHA):
+#   llama31_8b_instruct   llama    GQA 32/8     theta 500k   (L4)
+#   qwen25_7b_instruct    qwen     GQA 28/4     theta 1M     (L4)
+#   gemma2_9b_it          gemma    GQA 16/8 +softcap  10k    (A100, eager capture)
+#   mistral7b_v03_instruct mistral GQA 32/8     theta 1M     (L4)
+#   olmo2_7b_instruct     olmo     MHA 32/32 +QK-norm 500k   (L4)
+#   phi35_mini            phi      MHA 32/32, fused qkv  10k (L4)
+#   qwen25_3b_instruct    qwen     GQA 16/2     theta 1M     (L4)  [size axis]
 models:
   llama31_8b_instruct: "llama31_8b_instruct"
   gemma2_9b_it:        "gemma2_9b_it"
   mistral_7b_instruct: "mistral7b_v03_instruct"
   qwen25_7b_instruct:  "qwen25_7b_instruct"
+  olmo2_7b_instruct:   "olmo2_7b_instruct"
+  phi35_mini:          "phi35_mini"
+  qwen25_3b_instruct:  "qwen25_3b_instruct"
