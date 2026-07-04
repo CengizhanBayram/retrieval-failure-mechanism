@@ -49,32 +49,59 @@ def _cellspec(ax: dict) -> CellSpec:
 
 
 def _pairs_for_cell(model, tokenizer, factory, cell, n, seed, decoding_cfg, pair_min):
-    """Reconstruct matched (success_idx, failure_idx) pairs deterministically."""
-    succ, fail, probes = [], [], {}
-    for i in range(n):
-        probe = factory.build(cell, i, seed)
-        probes[i] = probe
-        gen = patching.generate_plain(model, tokenizer, probe.input_ids, decoding_cfg)
-        g = grading.grade_generation(gen.text, probe.needle_value, probe.distractor_values)
-        (succ if g.correct else fail).append(i)
+    """Reconstruct matched (success_idx, failure_idx) pairs deterministically.
+
+    The grading pass is BATCHED (no hooks); pairing then zips the two classes.
+    Returns a list of (success_probe, failure_probe) tuples."""
+    probes = [factory.build(cell, i, seed) for i in range(n)]
+    gens = patching.generate_plain_batch(
+        model, tokenizer, [p.input_ids for p in probes], decoding_cfg)
+    succ, fail = [], []
+    for i, (p, g) in enumerate(zip(probes, gens)):
+        (succ if grading.grade_generation(g.text, p.needle_value, p.distractor_values).correct
+         else fail).append(i)
     n_pairs = min(len(succ), len(fail))
     if n_pairs < pair_min:
         return []
-    return [(s, f, probes[s], probes[f])
+    return [(probes[s], probes[f])
             for s, f in zip(sorted(succ)[:n_pairs], sorted(fail)[:n_pairs])]
 
 
-def _grade(model, tokenizer, probe, heads, donor, decoding_cfg, patch_mode):
+def _grade_plain(model, tokenizer, probe, decoding_cfg) -> bool:
+    gen = patching.generate_plain(model, tokenizer, probe.input_ids, decoding_cfg)
+    return grading.grade_generation(gen.text, probe.needle_value, probe.distractor_values).correct
+
+
+def _grade_patched(model, tokenizer, probe, heads, donor, decoding_cfg, patch_mode) -> bool:
     gen = patching.generate_with_patch(model, tokenizer, probe.input_ids, heads, donor,
                                        decoding_cfg, patch_mode=patch_mode)
-    g = grading.grade_generation(gen.text, probe.needle_value, probe.distractor_values)
-    return g.correct
+    return grading.grade_generation(gen.text, probe.needle_value, probe.distractor_values).correct
 
 
 def _random_heads(det, k, seed) -> list[tuple[int, int]]:
     pool = det.non_retrieval_heads(detector="argmax")
     rng = random.Random(seed)
     return rng.sample(pool, k)
+
+
+def _self_patch_check(model, tokenizer, cell_pairs, heads, decoding_cfg, patch_mode, model_key):
+    """Run the self-patch no-op ONCE per model (§4.4): patch a recipient with its
+    OWN z and require a token-identical generation. Independent of k and of the
+    repair/break loop, so it need not repeat per pair. ABORT on mismatch."""
+    for pairs in cell_pairs.values():
+        if not pairs:
+            continue
+        _sp, fp = pairs[0]
+        donor_self = patching.capture_donor_z(model, fp.input_ids, heads)
+        plain = patching.generate_plain(model, tokenizer, fp.input_ids, decoding_cfg)
+        patched = patching.generate_with_patch(model, tokenizer, fp.input_ids, heads,
+                                               donor_self, decoding_cfg, patch_mode=patch_mode)
+        if plain.token_ids != patched.token_ids:
+            raise SelfPatchError(
+                f"Self-patch mismatch (model={model_key}). ABORTING (§4.4). "
+                "Investigate the o_proj hook / dtype round-trip.")
+        return True
+    return True  # no pairs to check
 
 
 def main(argv=None):
@@ -120,64 +147,77 @@ def main(argv=None):
     max_k = max(k_list)
     heads_max = det.top_k_heads(max_k, detector="argmax")
 
+    # ---- Precompute pairs + unpadded baselines ONCE (independent of k) -------
+    # Pairs depend only on (cell, seed); baselines and the no-patch rerun depend
+    # only on the recipient prompt. Computing them once avoids re-deriving them
+    # for every k (a large saving on the heaviest experiment).
+    cell_pairs: dict = {}
+    baselines: dict = {}   # id(probe) -> {"base": bool, "rerun": bool}
+    for h in cells_used:
+        cell = _cellspec(surface[h]["axes"])
+        n = int(surface[h]["n_total"])
+        pairs = _pairs_for_cell(model, tokenizer, factory, cell, n, seed, decoding_cfg, pair_min)
+        cell_pairs[h] = pairs
+        for (sp, fp) in pairs:
+            for probe in (sp, fp):
+                if id(probe) not in baselines:
+                    base = _grade_plain(model, tokenizer, probe, decoding_cfg)
+                    rerun = _grade_plain(model, tokenizer, probe, decoding_cfg)  # no-patch rerun
+                    baselines[id(probe)] = {"base": base, "rerun": rerun}
+
+    # ---- Self-patch smoke check ONCE per model (§4.4), abort on mismatch -----
+    self_patch_ok = _self_patch_check(model, tokenizer, cell_pairs, heads_max,
+                                      decoding_cfg, patch_mode, args.model)
+
     out_by_k: dict = {}
     for k in k_list:
         heads = heads_max[:k]
         ind = {"repair": [], "break": [], "ctrl_repair": [], "ctrl_break": [],
                "nopatch_repair": [], "nopatch_break": []}
-        self_patch_ok = True
+        ctrl_seeds = []
         pair_counter = 0
 
         for h in cells_used:
-            cell = _cellspec(surface[h]["axes"])
-            n = int(surface[h]["n_total"])
-            pairs = _pairs_for_cell(model, tokenizer, factory, cell, n, seed,
-                                    decoding_cfg, pair_min)
-            for (si, fi, sp, fp) in pairs:
+            for (sp, fp) in cell_pairs[h]:
                 pair_counter += 1
-                # self-patch guard (§4.4): recipient <- its own z, must be identical.
-                donor_self = patching.capture_donor_z(model, fp.input_ids, heads)
-                plain = patching.generate_plain(model, tokenizer, fp.input_ids, decoding_cfg)
-                patched_self = patching.generate_with_patch(
-                    model, tokenizer, fp.input_ids, heads, donor_self, decoding_cfg,
-                    patch_mode=patch_mode)
-                if plain.token_ids != patched_self.token_ids:
-                    self_patch_ok = False
-                    raise SelfPatchError(
-                        f"Self-patch mismatch (model={args.model}, k={k}, cell={h}). "
-                        "ABORTING (§4.4). Investigate the o_proj hook / dtype round-trip.")
+                base_fp = baselines[id(fp)]["base"]   # repair recipient baseline
+                base_sp = baselines[id(sp)]["base"]   # break  recipient baseline
 
                 donor_success = patching.capture_donor_z(model, sp.input_ids, heads)
                 donor_failure = patching.capture_donor_z(model, fp.input_ids, heads)
+                rep_correct = _grade_patched(model, tokenizer, fp, heads, donor_success,
+                                             decoding_cfg, patch_mode)
+                brk_correct = _grade_patched(model, tokenizer, sp, heads, donor_failure,
+                                             decoding_cfg, patch_mode)
+                # Flips are defined RELATIVE TO THE UNPADDED NO-PATCH BASELINE so
+                # they are apples-to-apples with the patched (also unpadded) run,
+                # independent of the batched pairing path (§6 fix).
+                ind["repair"].append(int((not base_fp) and rep_correct))
+                ind["break"].append(int(base_sp and (not brk_correct)))
 
-                # repair: failure recipient <- success donor
-                ind["repair"].append(int(_grade(model, tokenizer, fp, heads, donor_success,
-                                                 decoding_cfg, patch_mode)))
-                # break: success recipient <- failure donor
-                ind["break"].append(int(not _grade(model, tokenizer, sp, heads, donor_failure,
-                                                    decoding_cfg, patch_mode)))
-                # random controls (resampled per pair; recorded seed)
+                # random controls (resampled per pair; seed recorded, §4.4)
                 rseed_r = ctrl_seed_base + pair_counter * 7 + k
                 rseed_b = ctrl_seed_base + pair_counter * 13 + k
+                ctrl_seeds.append({"pair": pair_counter, "repair_seed": rseed_r,
+                                   "break_seed": rseed_b})
                 rheads_r = _random_heads(det, k, rseed_r)
                 rheads_b = _random_heads(det, k, rseed_b)
-                donor_succ_r = patching.capture_donor_z(model, sp.input_ids, rheads_r)
-                donor_fail_b = patching.capture_donor_z(model, fp.input_ids, rheads_b)
-                ind["ctrl_repair"].append(int(_grade(model, tokenizer, fp, rheads_r,
-                                                      donor_succ_r, decoding_cfg, patch_mode)))
-                ind["ctrl_break"].append(int(not _grade(model, tokenizer, sp, rheads_b,
-                                                         donor_fail_b, decoding_cfg, patch_mode)))
-                # no-patch rerun (flip base rate)
-                ind["nopatch_repair"].append(int(
-                    grading.grade_generation(
-                        patching.generate_plain(model, tokenizer, fp.input_ids, decoding_cfg).text,
-                        fp.needle_value, fp.distractor_values).correct))
-                ind["nopatch_break"].append(int(not
-                    grading.grade_generation(
-                        patching.generate_plain(model, tokenizer, sp.input_ids, decoding_cfg).text,
-                        sp.needle_value, sp.distractor_values).correct))
+                cr = _grade_patched(model, tokenizer, fp, rheads_r,
+                                    patching.capture_donor_z(model, sp.input_ids, rheads_r),
+                                    decoding_cfg, patch_mode)
+                cb = _grade_patched(model, tokenizer, sp, rheads_b,
+                                    patching.capture_donor_z(model, fp.input_ids, rheads_b),
+                                    decoding_cfg, patch_mode)
+                ind["ctrl_repair"].append(int((not base_fp) and cr))
+                ind["ctrl_break"].append(int(base_sp and (not cb)))
+
+                # no-patch rerun flip (base vs an independent rerun): detects GPU
+                # kernel nondeterminism — should be ~0.
+                ind["nopatch_repair"].append(int((not base_fp) and baselines[id(fp)]["rerun"]))
+                ind["nopatch_break"].append(int(base_sp and (not baselines[id(sp)]["rerun"])))
 
         out_by_k[str(k)] = _summarize(ind, margin_pp, alpha, stat_ci, seed, self_patch_ok)
+        out_by_k[str(k)]["random_control_seeds"] = ctrl_seeds
 
     provenance = make_provenance(
         script="scripts/e3_causal.py",

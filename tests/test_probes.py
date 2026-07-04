@@ -67,3 +67,26 @@ def test_zero_distractor_baseline_has_no_distractor_spans(fast_tokenizer):
     cell = CellSpec("test_model", 512, 0.5, 0, "none")
     p = f.build(cell, 0, seed=1)
     assert p.distractor_spans == [] and p.distractor_values == []
+
+
+def test_chat_template_applied_and_deterministic(fast_tokenizer):
+    """With use_chat_template on (default), the wrapper is present, skeleton is
+    still stable across samples, and a fixed date keeps it byte-identical."""
+    import copy
+    if getattr(fast_tokenizer, "chat_template", None) is None:
+        import pytest
+        pytest.skip("tokenizer has no chat template")
+    grid_ct = copy.deepcopy(GRID)
+    grid_ct["probe"]["use_chat_template"] = True
+    f = ProbeFactory(fast_tokenizer, grid_ct, "test_model")
+    cell = CellSpec("test_model", 512, 0.5, 2, "shell_same")
+    a = f.build(cell, 0, seed=5)
+    b = f.build(cell, 0, seed=5)
+    assert a.text == b.text and a.input_ids == b.input_ids
+    # skeleton stable across different samples of the cell
+    skels = {f.build(cell, i, seed=5).skeleton() for i in range(8)}
+    assert len(skels) == 1
+    # value span still decodes correctly through the wrapper
+    dec = fast_tokenizer.decode(
+        a.input_ids[a.needle_span.start:a.needle_span.end], skip_special_tokens=True).strip()
+    assert dec == a.needle_value

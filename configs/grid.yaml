@@ -26,6 +26,15 @@ oom_fallback:
 
 # ---- Probe text skeleton (§4.1) -------------------------------------------
 probe:
+  # Wrap each probe in the model's chat template (all 7 panel models are
+  # instruct-tuned and expect it). The wrapper tokens are constant per model, so
+  # token-skeleton alignment within a cell is preserved. A FIXED date is injected
+  # so templates that stamp "today's date" (e.g. Llama-3) stay deterministic
+  # across runs/days (§1.7). Set false to prompt with raw text (e.g. for base
+  # models).
+  use_chat_template: true
+  chat_template_date: "01 Jan 2025"
+
   # A short, constant preamble (same tokens for every probe of every cell) so
   # the model is oriented. Being constant, it does not affect skeleton
   # alignment across a cell's samples.

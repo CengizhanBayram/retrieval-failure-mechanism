@@ -111,6 +111,12 @@ class ProbeFactory:
         self.min_vocab: int = int(pcfg["min_vocab_after_filter"])
         self.filler_templates: list[str] = list(pcfg["filler_templates"])
         self.topic_words: list[str] = list(pcfg["topic_words"])
+        self.use_chat_template: bool = bool(pcfg.get("use_chat_template", False))
+        self.chat_template_date: str = pcfg.get("chat_template_date", "01 Jan 2025")
+        if self.use_chat_template and getattr(self.tok, "chat_template", None) is None:
+            raise ProbeError(
+                f"use_chat_template is true but tokenizer for '{model_key}' has no "
+                "chat_template. Set use_chat_template: false for base models.")
 
         if not getattr(self.tok, "is_fast", False):
             raise ProbeError(
@@ -225,21 +231,26 @@ class ProbeFactory:
             body = self._assemble_body(cell, fl, needle_ref, [distractor_ref] * cell.n_distractors)
             return body, fl
 
+        def prompt_len(body: str) -> int:
+            # measure the ACTUAL prompt the model sees (chat wrapper included)
+            text, add_special = self._wrap(self.preamble + body + self._render_question("x", "y"))
+            return len(self.tok(text, add_special_tokens=add_special)["input_ids"])
+
         # crude estimate
         sample_len = max(1, self._n_tokens(self._make_filler(random.Random(f"est|{h}"))) + 1)
         n = max(1, target // sample_len)
         body, fillers = assemble(n)
-        total = self._n_tokens(self.preamble + body + self._render_question("x", "y"))
+        total = prompt_len(body)
         # Grow / shrink to reach target (prompt should be >= target, minimal over).
         guard = 0
         while total < target and guard < 100000:
             n += max(1, (target - total) // sample_len)
             body, fillers = assemble(n)
-            total = self._n_tokens(self.preamble + body + self._render_question("x", "y"))
+            total = prompt_len(body)
             guard += 1
         while n > 0:
             body_try, fillers_try = assemble(n - 1)
-            t = self._n_tokens(self.preamble + body_try + self._render_question("x", "y"))
+            t = prompt_len(body_try)
             if t < target:
                 break
             n, body, fillers, total = n - 1, body_try, fillers_try, t
@@ -259,6 +270,28 @@ class ProbeFactory:
 
     def _render_question(self, adj: str, noun: str) -> str:
         return self.question_template.format(ADJ=adj, NOUN=noun)
+
+    def _wrap(self, user_msg: str) -> tuple[str, bool]:
+        """Return (prompt_text, add_special_tokens).
+
+        With the chat template on, the template already carries the model's
+        special tokens (so ``add_special_tokens=False`` when tokenising) and a
+        generation prompt is appended so the model answers. A FIXED date is
+        injected for templates that stamp the current date (Llama-3), keeping the
+        skeleton deterministic (§1.7); templates that don't accept ``date_string``
+        fall through unchanged.
+        """
+        if not self.use_chat_template:
+            return user_msg, True
+        messages = [{"role": "user", "content": user_msg}]
+        try:
+            text = self.tok.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True,
+                date_string=self.chat_template_date)
+        except TypeError:
+            text = self.tok.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True)
+        return text, False
 
     def _placements(self, cell: CellSpec, n_filler: int) -> tuple[int, list[int]]:
         """Gap indices (0..n_filler) at which the needle and each distractor are
@@ -324,9 +357,10 @@ class ProbeFactory:
         needle_text = self._render_needle(needle_adj, needle_noun, needle_value)
         question = self._render_question(needle_adj, needle_noun)
         body = self._assemble_body(cell, layout.filler, needle_text, distractor_texts)
-        text = self.preamble + body + question
+        user_msg = self.preamble + body + question
 
-        enc = self.tok(text, add_special_tokens=True, return_offsets_mapping=True)
+        text, add_special = self._wrap(user_msg)
+        enc = self.tok(text, add_special_tokens=add_special, return_offsets_mapping=True)
         input_ids = list(enc["input_ids"])
         offsets = enc["offset_mapping"]
 

@@ -130,6 +130,42 @@ def generate_plain(model, tokenizer, input_ids, decoding_cfg) -> Generation:
     return _greedy_loop(model, tokenizer, input_ids, decoding_cfg, None, "first_step")
 
 
+def generate_plain_batch(model, tokenizer, input_ids_list, decoding_cfg) -> list["Generation"]:
+    """Batched, left-padded greedy generation for many prompts at once.
+
+    Used for the no-hook GRADING passes (E1, and the E2/E3 pairing step) where
+    throughput matters. Hooked capture/patching stay single-sequence. Greedy +
+    max_new_tokens from the one decoding spec (§1.4); the grader reads the first
+    line, so per-sequence newline stopping is unnecessary here.
+    """
+    import torch
+    if not input_ids_list:
+        return []
+    device = next(model.parameters()).device
+    dec = decoding_cfg["decoding"]
+    pad_id = tokenizer.pad_token_id
+    maxlen = max(len(x) for x in input_ids_list)
+    input_ids, attn = [], []
+    for ids in input_ids_list:                    # LEFT pad (decoder-only)
+        pad = maxlen - len(ids)
+        input_ids.append([pad_id] * pad + list(ids))
+        attn.append([0] * pad + [1] * len(ids))
+    input_ids = torch.tensor(input_ids, device=device, dtype=torch.long)
+    attn = torch.tensor(attn, device=device, dtype=torch.long)
+    with torch.no_grad():
+        out = model.generate(input_ids=input_ids, attention_mask=attn,
+                             do_sample=False, num_beams=1,
+                             max_new_tokens=int(dec["max_new_tokens"]),
+                             pad_token_id=pad_id)
+    gen = out[:, input_ids.shape[1]:]
+    results = []
+    for row in gen:
+        toks = [int(t) for t in row.tolist()]
+        results.append(Generation(token_ids=toks,
+                                   text=tokenizer.decode(toks, skip_special_tokens=True)))
+    return results
+
+
 def capture_donor_z(model, input_ids, heads, *, answer_steps: int = 1) -> dict:
     """Capture donor z_h at generation step 1 (per head) for ``heads``.
 

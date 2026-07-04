@@ -47,6 +47,27 @@ def test_donor_store_roundtrip(tmp_path, tiny_llama):
         assert np.allclose(loaded[k], donor[k], atol=0)
 
 
+def test_padded_batch_matches_unpadded_greedy(tiny_llama):
+    """The E1/pairing batched (left-padded) path must give the SAME greedy tokens
+    as the single-sequence path, so 'breaking' selection and per-sample grading
+    agree (§6). Verified on prompts of differing length (forces padding)."""
+    model, tok = tiny_llama
+    prompts = [
+        tok("The access code for the golden lantern is K7QW2Z. What is it?",
+            add_special_tokens=True)["input_ids"],
+        tok("A much shorter prompt here.", add_special_tokens=True)["input_ids"],
+        tok("Numbers and colors drift across a quiet field near the old mill today, slowly.",
+            add_special_tokens=True)["input_ids"],
+    ]
+    batched = patching.generate_plain_batch(model, tok, prompts, DECODING)
+    for ids, bg in zip(prompts, batched):
+        single = patching.generate_plain(model, tok, ids, DECODING)
+        # single stops on newline/eos; batched fixed-length. Compare the common
+        # prefix up to the single path's stop.
+        n = len(single.token_ids)
+        assert bg.token_ids[:n] == single.token_ids, "padded vs unpadded greedy diverged"
+
+
 def test_patch_changes_generation_when_donor_differs(tiny_llama):
     """A donor from a DIFFERENT prompt should be able to change the output (a
     sanity check that the patch is actually applied, not a silent no-op)."""

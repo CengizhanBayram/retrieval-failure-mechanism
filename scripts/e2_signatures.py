@@ -126,16 +126,19 @@ def main(argv=None):
         if rec is None:
             continue
         cell = _cellspec_from_axes(rec["axes"])
-        if cell.n_distractors == 0:
-            continue  # baseline row: no distractors -> not a signature cell
+        # 0-distractor breaking cells ARE included: M2 (capture) simply never
+        # fires (distractor_mass = 0), but M1/correct_attend/residual still
+        # classify from needle mass — the cleanest silence-vs-downstream signal.
         n = int(rec["n_total"])
 
+        # Grading pass (batched, no hooks): identify success/failure per sample.
+        probes = [factory.build(cell, i, seed) for i in range(n)]
+        gens = patching.generate_plain_batch(
+            model, tokenizer, [p.input_ids for p in probes], decoding_cfg)
         succ, fail = [], []
         masses_by_sample = {}
         grades_by_sample = {}
-        for i in range(n):
-            probe = factory.build(cell, i, seed)
-            gen = patching.generate_plain(model, tokenizer, probe.input_ids, decoding_cfg)
+        for i, (probe, gen) in enumerate(zip(probes, gens)):
             g = grading.grade_generation(gen.text, probe.needle_value, probe.distractor_values)
             masses = _sample_masses(model, tokenizer, probe, heads, args.answer_steps)
             masses_by_sample[i] = masses
@@ -158,9 +161,15 @@ def main(argv=None):
                 "p5": cell_ref[(l, hh)].p5, "median": cell_ref[(l, hh)].median,
                 "n_success": len(sm),
             }
-        # sample-level reference from SUCCESS samples' top-k mean needle mass
-        succ_sl = [classify.sample_level_mass(
-            [masses_by_sample[i][hd] for hd in heads]).needle_mass for i in succ_sorted]
+        # sample-level reference from SUCCESS samples' top-k mean needle mass,
+        # over the NON-window-limited heads only (§8: window truncation is not a
+        # mechanism). Mirrors the failure-side sample-level logic below.
+        succ_sl = []
+        for i in succ_sorted:
+            live = [masses_by_sample[i][hd] for hd in heads
+                    if not masses_by_sample[i][hd].window_limited]
+            if live:
+                succ_sl.append(classify.sample_level_mass(live).needle_mass)
         sl_ref = classify.build_reference(succ_sl)
 
         # accumulate paired needle mass (per head) + classify FAILURE samples
@@ -174,11 +183,17 @@ def main(argv=None):
                 acc["failure_needle"].append(masses_by_sample[fi][(l, hh)].needle_mass)
                 bucket = _classify_head(masses_by_sample[fi][(l, hh)], cell_ref[(l, hh)], rules)
                 acc["buckets"][bucket] += 1
-            # sample-level bucket for the failure sample
-            sl_pt = classify.sample_level_mass([masses_by_sample[fi][hd] for hd in heads])
-            any_window = any(masses_by_sample[fi][hd].window_limited for hd in heads)
-            sl_bucket = (WINDOW_LIMITED if any_window
-                         else classify.classify_point(sl_pt, sl_ref, rules))
+            # sample-level bucket for the failure sample, over the NON-window-
+            # limited top-k heads only (§8). A single local head beyond its
+            # window no longer disqualifies the whole sample; the sample is
+            # WINDOW_LIMITED only if EVERY top-k head is window-limited.
+            live = [masses_by_sample[fi][hd] for hd in heads
+                    if not masses_by_sample[fi][hd].window_limited]
+            if not live:
+                sl_bucket = WINDOW_LIMITED
+            else:
+                sl_bucket = classify.classify_point(
+                    classify.sample_level_mass(live), sl_ref, rules)
             sample_bucket_counts[sl_bucket] += 1
             beh = grades_by_sample[fi].grade  # distractor_hit / other_wrong / empty
             crosstab.setdefault(beh, {b: 0 for b in list(classify.BUCKETS) + [WINDOW_LIMITED]})

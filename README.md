@@ -199,9 +199,33 @@ annotates each Gemma retrieval head local|global from its config.
 
 **Recompute, don't read, post-RoPE q (§4.3).** Under sdpa you cannot read the
 post-RoPE query (RoPE is applied inside the attention forward). `capture.py`
-hooks `q_proj` for the pre-RoPE q and re-applies the model's own rotary with the
-answer step's `position_ids`; K (post-RoPE) is read from the KV cache via the
-GQA map `kv = query_head // (n_query_heads // n_kv_heads)`.
+hooks `q_proj` (or the fused `qkv_proj`) for the pre-RoPE q, applies `q_norm`
+when present (OLMo-2), and re-applies the model's own rotary (partial-aware for
+Phi-3) with the answer step's `position_ids`; K (post-RoPE) is read from the KV
+cache via the GQA map `kv = query_head // (n_query_heads // n_kv_heads)`.
+
+### Design decisions
+
+- **Chat template on by default** (`grid.yaml probe.use_chat_template`). All 7
+  panel models are instruct-tuned; probes are wrapped in each model's chat
+  template with a **fixed date** so templates that stamp "today" (Llama-3) stay
+  deterministic. The wrapper is constant per cell, so token-skeleton alignment
+  is preserved. Set false for base models.
+- **0-distractor breaking cells are analyzed** in E2/E3 (M2 simply never fires;
+  M1/correct-attend/residual still classify) — the cleanest silence-vs-downstream
+  signal.
+- **E3 flips are defined relative to the unpadded no-patch baseline**, computed
+  with the same single-sequence path as the patched run, so a flip is
+  apples-to-apples and independent of the batched pairing path. Self-patch is
+  checked **once per model** (not per pair × k). Per-pair random-control seeds
+  are recorded in `e3_causal_{model}.json` (`k[*].random_control_seeds`).
+- **Sliding-window masking is general** (any model with an active
+  `sliding_window`), not Gemma-only; for this panel only Gemma-2's 4096 window
+  is below the studied contexts.
+- **E1 and E2/E3 tokenise identically**: every consumer uses the probe's
+  canonical `input_ids` (chat template + specials applied once by the factory);
+  batched (left-padded) and single-sequence greedy are checked token-equal by a
+  test.
 
 ---
 

@@ -115,6 +115,35 @@ def gemma2_is_sliding_layer(model, layer_idx: int) -> bool:
     return (layer_idx % 2) == 0
 
 
+def sliding_window_size(model) -> int | None:
+    """Effective sliding-window size, or None if the model attends globally.
+
+    Generalizes beyond Gemma-2: any model with a ``sliding_window`` config uses
+    it, unless gated off (Qwen2.5 ``use_sliding_window: false``). For the current
+    panel only Gemma-2's 4096 window is below the studied contexts; Phi/Qwen
+    windows exceed 16k, so this is a no-op there — but the check is now correct
+    for any windowed model rather than Gemma-only."""
+    cfg = model.config
+    sw = getattr(cfg, "sliding_window", None)
+    if not sw:
+        return None
+    if getattr(cfg, "use_sliding_window", True) is False:
+        return None
+    return int(sw)
+
+
+def layer_uses_sliding(model, layer_idx: int) -> bool:
+    """Whether ``layer_idx`` applies a local sliding window (any family)."""
+    if sliding_window_size(model) is None:
+        return False
+    if panel.is_gemma2(model):
+        return gemma2_is_sliding_layer(model, layer_idx)
+    layer_types = getattr(model.config, "layer_types", None)
+    if layer_types is not None:
+        return str(layer_types[layer_idx]).lower().startswith("sliding")
+    return True  # global sliding window (e.g. classic Mistral): all layers
+
+
 # ---------------------------------------------------------------------------
 # Capture config + result
 # ---------------------------------------------------------------------------
@@ -183,15 +212,13 @@ def _row_for_head(
     logits = scale * torch.einsum("bd,bsd->bs", q_h.float(), K.float())  # [batch, seq]
     if softcap is not None:
         logits = softcap * torch.tanh(logits / softcap)
-    # Sliding-window mask for Gemma-2 local layers (keys older than the window
-    # are not visible at the answer step).
-    if panel.is_gemma2(model) and gemma2_is_sliding_layer(model, layer):
-        sw = getattr(model.config, "sliding_window", None)
-        if sw:
-            seq = logits.shape[-1]
-            first_visible = max(0, position_id - int(sw) + 1)
-            if first_visible > 0:
-                logits[:, :first_visible] = float("-inf")
+    # Sliding-window mask for local layers (keys older than the window are not
+    # visible at the answer step). Generalized beyond Gemma-2 (§7 fix).
+    if layer_uses_sliding(model, layer):
+        sw = sliding_window_size(model)
+        first_visible = max(0, position_id - int(sw) + 1)
+        if first_visible > 0:
+            logits[:, :first_visible] = float("-inf")
     row = torch.softmax(logits, dim=-1)[0]         # batch 0
     return row.detach().cpu().numpy()
 
@@ -312,13 +339,12 @@ def _layer_keys(past, layer_idx):
 
 
 def _is_window_limited(model, layer_idx, needle_span, cur_position) -> bool:
-    """True if this is a Gemma-2 local layer and the needle lies OUTSIDE the
-    window at the answer step — its mass is truncated, not truly silent (§8)."""
-    if not panel.is_gemma2(model) or not gemma2_is_sliding_layer(model, layer_idx):
+    """True if this is a local (sliding-window) layer and the needle lies OUTSIDE
+    the window at the answer step — its mass is truncated, not truly silent (§8).
+    Generalized beyond Gemma-2 (§7 fix)."""
+    if not layer_uses_sliding(model, layer_idx):
         return False
-    sw = getattr(model.config, "sliding_window", None)
-    if not sw:
-        return False
+    sw = sliding_window_size(model)
     first_visible = max(0, cur_position - int(sw) + 1)
     return needle_span[0] < first_visible
 

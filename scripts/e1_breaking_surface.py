@@ -28,6 +28,7 @@ from failure_mech import panel as P  # noqa: E402
 from failure_mech import prereg as PR  # noqa: E402
 from failure_mech import grading  # noqa: E402
 from failure_mech import stats  # noqa: E402
+from failure_mech import patching  # noqa: E402
 from failure_mech.probes import ProbeFactory  # noqa: E402
 from failure_mech.provenance import make_provenance  # noqa: E402
 
@@ -83,32 +84,24 @@ def _cell_record(cell, grades) -> dict:
 
 def _generate_and_grade(model, tokenizer, factory, cell, n_samples, seed, decoding_cfg,
                         start_idx=0):
-    """Greedy generation (batched, no hooks) + grading for a cell's samples."""
-    import torch
+    """Greedy generation (token-budgeted batches, no hooks) + grading.
+
+    Uses each probe's CANONICAL ``input_ids`` (built once by the factory, chat
+    template + special tokens already applied) rather than re-tokenising text —
+    so E1 and the E2/E3 single-sequence paths tokenise identically (§4.1, §1.4).
+    """
     probes = [factory.build(cell, i, seed) for i in range(start_idx, start_idx + n_samples)]
-    dec = decoding_cfg["decoding"]
-    batches = C.token_budget_batches(
-        probes, length_of=lambda p: p.answer_prompt_len,
-        max_tokens=decoding_cfg["batch"]["max_tokens_per_batch"],
-        max_samples=decoding_cfg["batch"]["max_samples_per_batch"],
-        min_samples=decoding_cfg["batch"].get("min_samples_per_batch", 1),
-    )
-    grades = []
     tokenizer.padding_side = decoding_cfg.get("padding_side", "left")
-    for batch in batches:
-        texts = [p.text for p in batch]
-        enc = tokenizer(texts, return_tensors="pt", padding=True, add_special_tokens=True)
-        enc = {k: v.to(next(model.parameters()).device) for k, v in enc.items()}
-        with torch.no_grad():
-            out = model.generate(
-                **enc, do_sample=False, num_beams=1,
-                max_new_tokens=int(dec["max_new_tokens"]),
-                pad_token_id=tokenizer.pad_token_id,
-            )
-        gen = out[:, enc["input_ids"].shape[1]:]
-        for p, row in zip(batch, gen):
-            text = tokenizer.decode(row, skip_special_tokens=True)
-            grades.append(grading.grade_generation(text, p.needle_value, p.distractor_values))
+    grades = []
+    for batch in C.token_budget_batches(
+            probes, length_of=lambda p: p.answer_prompt_len,
+            max_tokens=decoding_cfg["batch"]["max_tokens_per_batch"],
+            max_samples=decoding_cfg["batch"]["max_samples_per_batch"],
+            min_samples=decoding_cfg["batch"].get("min_samples_per_batch", 1)):
+        gens = patching.generate_plain_batch(
+            model, tokenizer, [p.input_ids for p in batch], decoding_cfg)
+        for p, gen in zip(batch, gens):
+            grades.append(grading.grade_generation(gen.text, p.needle_value, p.distractor_values))
     return grades
 
 
