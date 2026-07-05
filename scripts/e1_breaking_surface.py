@@ -105,6 +105,31 @@ def _generate_and_grade(model, tokenizer, factory, cell, n_samples, seed, decodi
     return grades
 
 
+def _gen_grade_oom_safe(model, tokenizer, factory, cell, n, seed, decoding_cfg, grid_cfg,
+                        start_idx=0):
+    """Generate+grade with the ONE documented OOM fallback (§5, §1.9): on a CUDA
+    OOM at the fallback context (16384) retry at 12288, log loudly, and flag it.
+    Returns (grades, fallback_applied, effective_ctx, eval_cell)."""
+    import torch
+    from failure_mech.probes import CellSpec
+    try:
+        grades = _generate_and_grade(model, tokenizer, factory, cell, n, seed,
+                                     decoding_cfg, start_idx=start_idx)
+        return grades, False, cell.context_length, cell
+    except torch.cuda.OutOfMemoryError:
+        fb_ctx = C.apply_oom_fallback_ctx(grid_cfg, cell.context_length)
+        if fb_ctx == cell.context_length:
+            raise  # no fallback defined for this context -> fail loudly (§1.9)
+        torch.cuda.empty_cache()
+        log.warning("OOM at ctx=%d (cell %s). DOCUMENTED FALLBACK -> ctx=%d (§5).",
+                    cell.context_length, cell.cell_hash(), fb_ctx)
+        fb_cell = CellSpec(cell.model_key, fb_ctx, cell.needle_position,
+                           cell.n_distractors, cell.similarity)
+        grades = _generate_and_grade(model, tokenizer, factory, fb_cell, n, seed,
+                                     decoding_cfg, start_idx=start_idx)
+        return grades, True, fb_ctx, fb_cell
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -158,13 +183,16 @@ def main(argv=None):
             surface[h] = rec
             ckpt.note_skip(h)
             continue
-        grades = _generate_and_grade(model, tokenizer, factory, cell, stage1_n, seed, decoding_cfg)
-        rec = _cell_record(cell, grades)
+        grades, fb_applied, eff_ctx, _ = _gen_grade_oom_safe(
+            model, tokenizer, factory, cell, stage1_n, seed, decoding_cfg, grid_cfg)
+        rec = _cell_record(cell, grades)   # axes keep the grid context; fallback flagged below
         rec["n_stage1"] = stage1_n
-        rec["fallback_applied"] = False
+        rec["oom_fallback_applied"] = fb_applied
+        rec["effective_context_length"] = eff_ctx
         surface[h] = rec
         ckpt.save_cell(h, rec)
-        log.info("stage1 %s acc=%.3f (n=%d)", h, rec["accuracy"], rec["n_total"])
+        log.info("stage1 %s acc=%.3f (n=%d)%s", h, rec["accuracy"], rec["n_total"],
+                 f" [OOM fallback -> {eff_ctx}]" if fb_applied else "")
 
     breaking, fallback_applied = _select_breaking(surface, band, fb)
 
@@ -179,10 +207,14 @@ def main(argv=None):
             if have >= stage2_n:
                 continue
             extra = stage2_n - have
-            grades = _generate_and_grade(model, tokenizer, factory, cell, extra, seed,
-                                         decoding_cfg, start_idx=have)
+            grades, fb_applied, eff_ctx, _ = _gen_grade_oom_safe(
+                model, tokenizer, factory, cell, extra, seed, decoding_cfg, grid_cfg,
+                start_idx=have)
             # merge counts
             merged = _merge_records(rec, cell, grades)
+            if fb_applied:
+                merged["oom_fallback_applied"] = True
+                merged["effective_context_length"] = eff_ctx
             surface[h] = merged
             ckpt.save_cell(h, merged)
             log.info("stage2 %s topped to n=%d acc=%.3f", h, merged["n_total"], merged["accuracy"])
@@ -260,10 +292,11 @@ def _dry_run(model_key, cells, grid_cfg, prereg, stage1_n, stage2_n, band):
     "accuracy": <float in [0,1]>,
     "wilson_ci95": {"lo": <float>, "hi": <float>},
     "behavioral_grade_counts": {"correct","distractor_hit","other_wrong","empty"},
-    "fallback_applied": <bool>
+    "oom_fallback_applied": <bool>,            # §5 context OOM fallback 16384->12288
+    "effective_context_length": <int>          # actual context used (== axes unless OOM fallback)
   }""")
     print("output  e1_breaking_cells_{model}.json: "
-          '{"breaking_cells": [cell_hash,...], "fallback_applied": <bool>}')
+          '{"breaking_cells": [cell_hash,...], "fallback_applied": <bool>}   # band-widen fallback')
     ex = cells[0]
     print(f"\nexample cell: {ex.axes()}  hash={ex.cell_hash()}")
     print("(no model loaded in --dry-run; accuracy/Wilson fields populate on a real run)\n")

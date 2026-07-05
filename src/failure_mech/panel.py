@@ -98,15 +98,28 @@ def resolve_part2_repo(paths_cfg: dict) -> Path:
     )
 
 
-def ensure_reuse_on_path(paths_cfg: dict) -> tuple[Path, Path]:
-    """Put Part-1 ``src`` and Part-2 ``rhp`` on ``sys.path``; return both roots.
-    Also sets ``RHP_PART1_REPO`` so ``rhp._paths`` resolves consistently."""
-    part2 = resolve_part2_repo(paths_cfg)
-    part1 = resolve_part1_repo(paths_cfg)
+def ensure_reuse_on_path(paths_cfg: dict) -> tuple[Path | None, Path]:
+    """Put the reuse repos on ``sys.path`` and return ``(part1, part2)``.
+
+    Part-2 is REQUIRED — it supplies ``configs/panel.yaml`` (pinned SHAs) and the
+    detection artifacts, both of which Part-3 reads. Part-1 is OPTIONAL: Part-3
+    reads panel.yaml and the artifacts as files/JSON and does NOT import Part-1
+    ``src`` code, so a missing Part-1 is a warning, not a failure (it stays
+    available for anyone who wants to cross-check with Part-1 utilities).
+    """
+    import logging
+    part2 = resolve_part2_repo(paths_cfg)          # required
+    if str(part2) not in sys.path:
+        sys.path.insert(0, str(part2))
+    try:
+        part1 = resolve_part1_repo(paths_cfg)
+    except PanelError:
+        logging.getLogger(__name__).info(
+            "Part-1 repo not found; continuing (Part-3 does not import it).")
+        return None, part2
     os.environ.setdefault("RHP_PART1_REPO", str(part1))
-    for root in (str(part1), str(part2)):
-        if root not in sys.path:
-            sys.path.insert(0, root)
+    if str(part1) not in sys.path:
+        sys.path.insert(0, str(part1))
     return part1, part2
 
 
@@ -249,16 +262,29 @@ def load_model(
 ) -> tuple[Any, Any, dict]:
     """Load (model, tokenizer, resolved_cfg) at the PINNED revision in bf16.
 
-    Gemma-2 with softcapping is auto-promoted to eager by HF regardless of the
-    requested backend; that is expected (README) and we surface the effective
-    backend in ``resolved_cfg['effective_attn']``.
+    GEMMA-2 BACKEND: transformers does NOT auto-promote Gemma-2 to eager — under
+    sdpa it SILENTLY DROPS attention-logit softcapping (a one-time warning), so
+    generation logits would be subtly wrong. Softcapping is part of the real
+    Gemma-2, so we force ``eager`` for the gemma family (correct softcap; needs
+    the A100 the panel already marks for it, helped by the 4096 sliding window on
+    half its layers). The effective backend is surfaced in
+    ``resolved_cfg['effective_attn']``.
     """
+    import logging
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     cfg = model_cfg(paths_cfg, panel, task_key)
     hf_id, rev = cfg["hf_id"], cfg["revision"]
     torch_dtype = getattr(torch, dtype)
+
+    requested = attn_implementation
+    if cfg.get("family") == "gemma":
+        attn_implementation = "eager"   # softcap correctness (sdpa drops it silently)
+        if requested != "eager":
+            logging.getLogger(__name__).info(
+                "Gemma-2 forced to eager attention for softcapping correctness "
+                "(requested %s).", requested)
 
     tokenizer = AutoTokenizer.from_pretrained(hf_id, revision=rev, trust_remote_code=True)
     if tokenizer.pad_token is None:
@@ -275,5 +301,6 @@ def load_model(
     cfg["n_query_heads"] = n_heads
     cfg["n_kv_heads"] = n_kv
     cfg["head_dim"] = head_dim(model)
+    cfg["requested_attn"] = requested
     cfg["effective_attn"] = getattr(model.config, "_attn_implementation", attn_implementation)
     return model, tokenizer, cfg

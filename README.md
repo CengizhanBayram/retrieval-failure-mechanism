@@ -153,7 +153,8 @@ Every JSON has a top-level `provenance` block (see below). Experiment payloads:
 | `accuracy` | fraction with `grade == correct` |
 | `wilson_ci95` | `{lo, hi}` Wilson score interval on accuracy |
 | `behavioral_grade_counts` | `{correct, distractor_hit, other_wrong, empty}` |
-| `fallback_applied` | whether the widened breaking band was used |
+| `oom_fallback_applied` | whether the §5 context OOM fallback (16384→12288) fired for this cell |
+| `effective_context_length` | the context actually used (= axes context unless OOM fallback) |
 
 **`e1_breaking_cells_{model}.json`**: `{breaking_cells: [cell_hash…], fallback_applied}`.
 
@@ -183,14 +184,17 @@ output. It is reserved for genuine context-driven OOM — E1 batching is
 **token-budgeted** (`max_tokens_per_batch`), so a fixed batch never trips it at
 long context.
 
-**Gemma-2 capture runs in eager, by design (§4.3, §8).** Gemma-2 is *not* plain
+**Gemma-2 runs in eager, by design (§4.3, §8).** Gemma-2 is *not* plain
 `softmax(qKᵀ/√d)`: it scales q by `1/√query_pre_attn_scalar`, softcaps the
 attention logits (`cap·tanh(logits/cap)`) before softmax, and alternates
-sliding-window (local) and global layers. HF forces Gemma-2 to eager because of
-softcapping, so the `capture: sdpa` request effectively becomes eager for
-Gemma-2. `capture.py` reads the scale + softcap from config and masks the
-sliding window; the eager-reference test (< 1e-3) is the arbiter and passes for
-Gemma-2 only when all three are applied.
+sliding-window (local) and global layers. Under **sdpa, transformers silently
+drops softcapping** (it does *not* auto-promote to eager), which would make
+Gemma-2's generation logits subtly wrong — so `panel.load_model` **forces eager
+for the gemma family** (correct softcap; uses the A100 the panel marks for it,
+helped by the 4096 sliding window on half its layers). `capture.py` also reads
+the scale + softcap from config and masks the sliding window; the eager-reference
+test (< 1e-3) is the arbiter and passes for Gemma-2 only when all three are
+applied. (If eager OOMs at 16k, the §5 OOM fallback drops that cell to 12288.)
 
 **Gemma-2 window rule (§8).** A **local** retrieval head whose needle lies beyond
 its sliding window at the answer step is marked `window_limited` and **excluded

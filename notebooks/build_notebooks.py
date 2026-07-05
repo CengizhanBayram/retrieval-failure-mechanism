@@ -134,8 +134,9 @@ import os, sys, subprocess
 os.environ['RHP_PART1_REPO'] = '/content/rope-part1'
 os.environ['RHP_PART2_REPO'] = '/content/rope-part2'
 PART3 = '/content/rope-part3'
-sys.path.insert(0, PART3 + '/src')
-sys.path.insert(0, PART3 + '/scripts')
+sys.path.insert(0, PART3 + '/src')       # failure_mech
+sys.path.insert(0, PART3 + '/scripts')   # _common
+import _common as C                       # shared helpers (time_guard, load_paths_cfg, ...)
 
 if os.environ.get('HF_TOKEN'):
     try:
@@ -147,7 +148,7 @@ if os.environ.get('HF_TOKEN'):
 def run(argv):
     '''Run a Part-3 script as a subprocess in the Part-3 dir, streaming output.'''
     env = dict(os.environ)
-    p = subprocess.Popen(['python'] + argv, cwd=PART3, env=env,
+    p = subprocess.Popen([sys.executable] + argv, cwd=PART3, env=env,
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     for line in p.stdout:
         print(line, end='')
@@ -155,7 +156,7 @@ def run(argv):
     if p.returncode != 0:
         raise RuntimeError(f'script failed ({p.returncode}): {argv}')
 
-print('Setup OK. PART3 =', PART3, '| RESULTS_DIR =', os.environ['RFM_RESULTS_DIR'])
+print('Setup OK. C, run() ready. PART3 =', PART3, '| RESULTS_DIR =', os.environ['RFM_RESULTS_DIR'])
 """)
 
 PREREG_GATE = code(r"""
@@ -210,9 +211,9 @@ def nb_00() -> dict:
         "Validates the skeleton BEFORE any experiment burns GPU time. Runs the CPU "
         "guardrail tests (pre-registration red-test, four-bucket partition, stats, "
         "grading, probe skeleton alignment) and then the **eager-reference capture "
-        "check on the four PINNED models** — the sole arbiter of the manual "
-        "attention row (recompute-RoPE + Gemma-2 softcap/query-scale). Trust no "
-        "capture number until this passes on all four (esp. Gemma-2).")]
+        "check on the seven PINNED models** — the sole arbiter of the manual "
+        "attention row (recompute-RoPE + Gemma-2 softcap/query-scale + OLMo-2 "
+        "QK-norm + Phi-3 fused-qkv). Trust no capture number until this passes.")]
     cells += setup_cells()
     cells.append(md("## Guardrail tests (CPU) — prereg gate, stats, classify, grading, probes"))
     cells.append(code(r"""
@@ -229,38 +230,47 @@ run(['-m', 'pytest', 'tests/test_prereg.py', 'tests/test_stats.py',
                     "OLMo-2 QK-norm, and Phi-3 fused-qkv + partial rotary. **This is the "
                     "arbiter — trust no capture number until every model prints PASS.**"))
     cells.append(code(r"""
-import numpy as np, torch
+import numpy as np, torch, gc
 from failure_mech import panel as P, detect, capture as CAP
-from scripts import _common as C
+# C is provided by the setup cell (import _common as C).
 
 paths = C.load_paths_cfg(); panel_reg = P.load_panel(paths); P.ensure_reuse_on_path(paths)
 TEXT = "The access code for the golden lantern is K7QW2Z. Remember it well."
 
+def manual_row(model, ids, l, h):
+    '''Reproduce capture's manual row via the SAME library helpers (family-aware:
+    q_proj/qkv_proj, q_norm, partial rotary). Never re-implement it here.'''
+    nH, nKV = P.head_counts(model)
+    with torch.no_grad(), CAP._QProjTap(model, {l}) as tap:
+        pos = torch.arange(0, len(ids)).unsqueeze(0).to(next(model.parameters()).device)
+        out = model(input_ids=torch.tensor([ids]).to(pos.device), position_ids=pos, use_cache=True)
+        cos, sin = CAP._rope_cos_sin(model, pos)
+        qr = CAP.query_rotated_last(model, l, tap.store[l], cos[:, -1, :], sin[:, -1, :],
+                                    nH, P.head_dim(model))
+        return CAP._row_for_head(model, l, h, qr, CAP._layer_keys(out.past_key_values, l),
+                                 len(ids) - 1, nH, nKV, P.attention_scale(model),
+                                 P.attn_logit_softcap(model))
+
 for key in %(models)s:
-    model, tok, mcfg = P.load_model(paths, panel_reg, key,
-                                    attn_implementation='eager', dtype='bfloat16')
-    ids = tok(TEXT, add_special_tokens=True)['input_ids']
-    det = detect.load_detection(P.detection_dir(paths), P.resolve_model_key(paths, key),
-                                int(paths['detection_artifacts']['seed']))
-    heads = det.top_k_heads(3, detector='argmax')
-    worst = 0.0
-    for (l, h) in heads:
-        ref = CAP.eager_reference_row(model, ids, l, h)
-        # manual row via the library machinery
-        with torch.no_grad(), CAP._QProjTap(model, {l}) as tap:
-            pos = torch.arange(0, len(ids)).unsqueeze(0).to(next(model.parameters()).device)
-            out = model(input_ids=torch.tensor([ids]).to(pos.device), position_ids=pos, use_cache=True)
-            cos, sin = CAP._rope_cos_sin(model, pos)
-            nH, nKV = P.head_counts(model); hd = tap.store[l].shape[-1]//nH
-            ql = tap.store[l][:, -1, :].view(1, nH, hd)
-            qr = CAP._apply_rope(ql, cos[:, -1, :], sin[:, -1, :])
-            manual = CAP._row_for_head(model, l, h, qr, CAP._layer_keys(out.past_key_values, l),
-                                       len(ids)-1, nH, nKV, P.attention_scale(model),
-                                       P.attn_logit_softcap(model))
-        worst = max(worst, float(np.max(np.abs(manual - ref))))
-    status = 'PASS' if worst < 1e-3 else 'FAIL'
-    print(f'{key:24s} eff_attn={mcfg["effective_attn"]:6s} max|manual-eager|={worst:.2e}  {status}')
-    del model; torch.cuda.empty_cache()
+    try:
+        model, tok, mcfg = P.load_model(paths, panel_reg, key,
+                                        attn_implementation='eager', dtype='bfloat16')
+        ids = tok(TEXT, add_special_tokens=True)['input_ids']
+        det = detect.load_detection(P.detection_dir(paths), P.resolve_model_key(paths, key),
+                                    int(paths['detection_artifacts']['seed']))
+        worst = 0.0
+        for (l, h) in det.top_k_heads(3, detector='argmax'):
+            ref = CAP.eager_reference_row(model, ids, l, h)
+            worst = max(worst, float(np.max(np.abs(manual_row(model, ids, l, h) - ref))))
+        status = 'PASS' if worst < 1e-3 else 'FAIL  <-- investigate before trusting capture'
+        print(f'{key:22s} eff_attn={mcfg["effective_attn"]:6s} max|manual-eager|={worst:.2e}  {status}')
+        del model
+    except Exception as e:
+        print(f'{key:22s} SKIPPED/ERROR: {type(e).__name__}: {str(e)[:120]}')
+    finally:
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 """ % {"models": json.dumps(MODELS)}))
     return notebook(cells)
 
@@ -276,7 +286,7 @@ def _model_loop(title, subtitle, script_argv_tmpl, first_est_h, skip_check) -> l
     return [
         md(f"## {title}\n{subtitle}"),
         code(r"""
-import os, time
+import os, time, gc, torch
 RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
 MODELS = %(models)s
 start = time.time(); model_times = []
@@ -288,9 +298,19 @@ for key in MODELS:
         print(f'STOP before {key}: {elapsed_h:.1f}h + est {est_h:.1f}h > %(cap)d h cap. '
               f'Re-run to resume (finished models are skipped).'); break
     t0 = time.time()
-    run(%(argv)s)
-    model_times.append((time.time()-t0)/3600.0)
-    print(key, 'done in', round(model_times[-1], 2), 'h')
+    try:
+        run(%(argv)s)
+        model_times.append((time.time() - t0) / 3600.0)
+        print(key, 'done in', round(model_times[-1], 2), 'h')
+    except Exception as e:
+        # one model failing (OOM, gated w/o token, ...) must not lose the others;
+        # it has no output file, so a re-run retries just this model.
+        print(f'{key} FAILED after {(time.time()-t0)/3600:.2f}h: '
+              f'{type(e).__name__}: {str(e)[:200]}  -- continuing to next model.')
+    finally:
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 """ % {"models": json.dumps(MODELS), "skip": skip_check, "est": first_est_h,
         "cap": HARD_CAP_H, "argv": script_argv_tmpl}),
     ]
@@ -306,7 +326,7 @@ def nb_e1() -> dict:
         "handled by the script (`--stage auto`).")]
     cells += setup_cells()
     cells += _model_loop(
-        "E1 for all four models",
+        "E1 for all seven models",
         "One model per iteration; the guard won't start a model that can't finish "
         "under the 23 h cap.",
         "['scripts/e1_breaking_surface.py', '--model', key, '--stage', 'auto']",
@@ -324,7 +344,7 @@ def nb_e2() -> dict:
         "the four buckets, and cross-tabs behavior x mechanism. Needs E1 outputs.")]
     cells += setup_cells()
     cells += _model_loop(
-        "E2 for all four models",
+        "E2 for all seven models",
         "Capture runs sdpa (Gemma-2 auto-eager for softcapping).",
         "['scripts/e2_signatures.py', '--model', key]",
         first_est_h=4.0,
@@ -341,7 +361,7 @@ def nb_e3() -> dict:
         "neutrally. Needs E2 outputs.")]
     cells += setup_cells()
     cells += _model_loop(
-        "E3 for all four models",
+        "E3 for all seven models",
         "Heavier than E2 (5 runs/pair x 3 k). The guard protects the 24 h budget.",
         "['scripts/e3_causal.py', '--model', key]",
         first_est_h=6.0,
@@ -353,7 +373,7 @@ def nb_e4_e5() -> dict:
     cells = [md(
         "# 04 · E4 Families + E5 Robustness (§8, §9)\n"
         "E4 assembles the cross-family table and finalizes the authoritative BH "
-        "across {4 models x 2 directions} for the causal decision (+ Gemma-2 "
+        "across {7 models x 2 directions} for the causal decision (+ Gemma-2 "
         "local/global head annotation). E5 recomputes the E2 headlines on the Wu "
         "head list, at the sensitivity k, over seed repeats (mean +/- range), and "
         "with answer_steps=3. Needs E2/E3 outputs.")]
