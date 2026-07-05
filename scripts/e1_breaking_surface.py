@@ -174,7 +174,10 @@ def main(argv=None):
         dtype=decoding_cfg["dtype"],
     )
     factory = ProbeFactory(tokenizer, grid_cfg, args.model)
-    ckpt = C.CheckpointManager(paths_cfg["output"]["results_dir"], EXP, args.model)
+    fingerprint = C.probe_fingerprint(
+        [args.config, C.config_path("decoding.yaml")], mcfg["revision"], seed)
+    ckpt = C.CheckpointManager(paths_cfg["output"]["results_dir"], EXP, args.model,
+                               fingerprint=fingerprint)
 
     surface: dict[str, dict] = {}
     # ---- Stage 1 ----

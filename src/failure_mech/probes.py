@@ -305,8 +305,14 @@ class ProbeFactory:
                 # even spread across the full span
                 g = int(round((j + 1) * n_filler / (cell.n_distractors + 1)))
                 g = min(max(g, 0), n_filler)
-                while g == needle_gap or g in gaps:
+                # Prefer a free gap, but there are only n_filler+1 gaps; if fewer
+                # gaps than items (tiny context / many distractors) bound the
+                # search and allow a stack (assemble handles multiple per gap) —
+                # never spin forever. Deterministic, so the skeleton stays fixed.
+                tries = 0
+                while (g == needle_gap or g in gaps) and tries <= n_filler:
                     g = (g + 1) % (n_filler + 1)
+                    tries += 1
                 gaps.append(g)
         return needle_gap, gaps
 

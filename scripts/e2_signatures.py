@@ -38,8 +38,12 @@ EXP = "e2"
 WINDOW_LIMITED = "window_limited"  # excluded-from-silence label (§8)
 
 
-def _cellspec_from_axes(ax: dict) -> CellSpec:
-    return CellSpec(ax["model_key"], int(ax["context_length"]), float(ax["needle_position"]),
+def _cellspec_from_axes(ax: dict, rec: dict | None = None) -> CellSpec:
+    # Honor E1's OOM fallback: if E1 evaluated this cell at a reduced context
+    # (16384->12288), rebuild probes at that SAME context so E2/E3 reproduce the
+    # exact samples E1 selected (else the pairing would use different probes).
+    ctx = int(rec.get("effective_context_length", ax["context_length"])) if rec else int(ax["context_length"])
+    return CellSpec(ax["model_key"], ctx, float(ax["needle_position"]),
                     int(ax["n_distractors"]), ax["similarity"])
 
 
@@ -125,7 +129,7 @@ def main(argv=None):
         rec = surface.get(h)
         if rec is None:
             continue
-        cell = _cellspec_from_axes(rec["axes"])
+        cell = _cellspec_from_axes(rec["axes"], rec)
         # 0-distractor breaking cells ARE included: M2 (capture) simply never
         # fires (distractor_mass = 0), but M1/correct_attend/residual still
         # classify from needle mass — the cleanest silence-vs-downstream signal.
