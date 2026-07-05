@@ -1,0 +1,48 @@
+# ===========================================================================
+# PRE-REGISTRATION (live gate file).
+#
+# Adopted by the researcher on 2026-07-05 from the proposed template
+# (configs/preregistration.example.yaml), before any confirmatory run — no
+# results exist yet. These thresholds are fixed for the E1–E5 suite; changing
+# them after seeing results breaks the pre-registration. The two attention-mass
+# thresholds (m1_silence.absolute_floor, m2_capture.*) were reviewed and may be
+# re-calibrated to pilot data before the run if available.
+#
+# The gate (failure_mech.prereg) validates every key below and its SHA-256 is
+# recorded in each result's provenance block, so the exact thresholds behind any
+# number are auditable (README "PROVENANCE").
+# ===========================================================================
+
+sampling:
+  stage1_n_per_cell: 24               # E1 stage-1 samples per cell (all 140 cells/model)
+  stage2_topup_n_breaking_cells: 100  # breaking cells topped up to this many samples
+  pair_min_per_cell: 8                # drop cells with fewer than 8 matched pairs
+
+breaking_band_accuracy: {lo: 0.2, hi: 0.8}   # "breaking" = has BOTH successes and failures to pair
+breaking_band_fallback:
+  widened_band: {lo: 0.1, hi: 0.9}
+  min_breaking_cells: 10              # widen ONLY if fewer than 10 breaking cells (logged + flagged)
+
+signature_rules:
+  reference_distribution: {source: success_samples, stats: [p5, median], detector: argmax}
+  m1_silence:     {reference: p5,     factor: 1.0, absolute_floor: 0.02}   # needle mass ~0 -> silent
+  m2_capture:     {min_distractor_mass: 0.10, distractor_over_needle_margin: 0.05}  # a distractor wins the row
+  correct_attend: {reference: median, factor: 1.0}   # attends the needle as well as a typical success
+  residual: {}                                        # terminal catch-all
+  mode_precedence: [m2_capture, m1_silence, correct_attend, residual]
+  sample_level_k_heads: 5             # top-5 heads (every panel model has >=30 retrieval heads)
+  sensitivity_k_heads: 10             # E5 re-check at k=10
+
+causal_criteria:
+  flip_margin_over_control_pp: 20     # patched must beat the random-head control by >=20 points
+  test: paired_permutation
+  alpha: 0.05
+  correction: benjamini_hochberg      # across 7 models x 2 directions, finalized in E4
+
+seeds:
+  e1_surface: 42
+  e2_e3_headline_repeats: [42, 43, 44]   # 3 seed repeats for E5 (b)
+
+statistics:
+  effect_size: cliffs_delta
+  ci: 0.95
