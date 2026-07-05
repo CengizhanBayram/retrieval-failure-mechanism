@@ -43,8 +43,10 @@ class SelfPatchError(RuntimeError):
     """Self-patch produced a non-identical generation — abort (§4.4)."""
 
 
-def _cellspec(ax: dict) -> CellSpec:
-    return CellSpec(ax["model_key"], int(ax["context_length"]), float(ax["needle_position"]),
+def _cellspec(ax: dict, rec: dict | None = None) -> CellSpec:
+    # Honor E1's OOM fallback context (see e2_signatures._cellspec_from_axes).
+    ctx = int(rec.get("effective_context_length", ax["context_length"])) if rec else int(ax["context_length"])
+    return CellSpec(ax["model_key"], ctx, float(ax["needle_position"]),
                     int(ax["n_distractors"]), ax["similarity"])
 
 
