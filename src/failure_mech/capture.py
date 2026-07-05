@@ -185,7 +185,9 @@ class _QProjTap:
 
             def make(idx):
                 def hook(_m, _inp, out):
-                    self.store[idx] = out.detach()
+                    # Only the LAST position's query is used; keep just that (a
+                    # full 16k projection per layer is a large, needless tensor).
+                    self.store[idx] = out[:, -1:, :].detach()
                 return hook
 
             self._handles.append(proj.register_forward_hook(make(li)))

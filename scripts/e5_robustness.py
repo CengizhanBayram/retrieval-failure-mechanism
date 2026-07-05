@@ -37,9 +37,16 @@ log = logging.getLogger("e5")
 E2 = str(C.REPO_ROOT / "scripts" / "e2_signatures.py")
 
 
-def _run(cmd: list[str]) -> None:
+def _run(cmd: list[str]) -> bool:
+    """Run one E2 variant. Returns True on success; a failing variant (e.g. a
+    model with fewer copy-heads than k) is logged and skipped rather than killing
+    the whole robustness run (it just won't contribute to the aggregate)."""
     log.info("RUN %s", " ".join(cmd))
-    subprocess.run(cmd, check=True)
+    r = subprocess.run(cmd)
+    if r.returncode != 0:
+        log.warning("variant FAILED (%d), skipping: %s", r.returncode, " ".join(cmd))
+        return False
+    return True
 
 
 def _seeds(spec) -> list[int]:

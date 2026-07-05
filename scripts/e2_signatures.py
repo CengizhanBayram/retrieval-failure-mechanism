@@ -136,21 +136,28 @@ def main(argv=None):
         gens = patching.generate_plain_batch(
             model, tokenizer, [p.input_ids for p in probes], decoding_cfg)
         succ, fail = [], []
-        masses_by_sample = {}
         grades_by_sample = {}
         for i, (probe, gen) in enumerate(zip(probes, gens)):
             g = grading.grade_generation(gen.text, probe.needle_value, probe.distractor_values)
-            masses = _sample_masses(model, tokenizer, probe, heads, args.answer_steps)
-            masses_by_sample[i] = masses
             grades_by_sample[i] = g
             (succ if g.correct else fail).append(i)
 
+        # Exclusion check BEFORE the expensive capture (a near-ceiling model
+        # excludes most cells; capturing them would waste huge GPU time).
         n_pairs = min(len(succ), len(fail))
         if n_pairs < pair_min:
             log.info("cell %s excluded: %d pairs < pair_min %d", h, n_pairs, pair_min)
             continue
         cells_used.append(h)
         succ_sorted, fail_sorted = sorted(succ), sorted(fail)
+
+        # Capture masses ONLY for the samples actually used: every success (for
+        # the reference distribution) + the paired failures.
+        needed = sorted(set(succ_sorted) | set(fail_sorted[:n_pairs]))
+        masses_by_sample = {
+            i: _sample_masses(model, tokenizer, probes[i], heads, args.answer_steps)
+            for i in needed
+        }
 
         # per-(head,cell) reference from SUCCESS samples
         cell_ref: dict = {}
