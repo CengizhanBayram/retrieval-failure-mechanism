@@ -350,8 +350,17 @@ class ProbeFactory:
         for j in range(cell.n_distractors):
             dv = self._sample_value(rng)
             distractor_values.append(dv)
+            d_adj, d_noun = adjs[j + 1], nouns[j + 1]
+            if cell.similarity == "shell_share":
+                # Key-overlap: reuse the needle's ADJ (even j) or NOUN (odd j) so
+                # the distractor key differs from the needle in ONLY one slot,
+                # forcing full-key disambiguation (§ grid.similarity note).
+                if j % 2 == 0:
+                    d_adj = needle_adj
+                else:
+                    d_noun = needle_noun
             distractor_texts.append(
-                self._render_distractor(cell.similarity, adjs[j + 1], nouns[j + 1], dv)
+                self._render_distractor(cell.similarity, d_adj, d_noun, dv)
             )
 
         needle_text = self._render_needle(needle_adj, needle_noun, needle_value)

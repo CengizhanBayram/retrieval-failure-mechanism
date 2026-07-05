@@ -17,6 +17,16 @@ grid:
   # construction (no distractor spans). similarity is irrelevant when count==0;
   # the grid builder emits a single 0-distractor cell per (ctx, pos) tagged
   # similarity="none".
+  #
+  # DIFFICULTY (researcher's design lever). Strong instruct models solve
+  # shell_same/shell_diff at ~100% up to 16k -> NO breaking cells -> nothing for
+  # E2/E3 to dissect. To induce failures, add the harder KEY-OVERLAP distractor
+  # by putting "shell_share" in the similarity list above:
+  #     similarity: ["shell_same", "shell_diff", "shell_share"]
+  # A shell_share distractor reuses the needle's ADJ or NOUN (only the other
+  # half + the value differ), so the model must disambiguate the FULL key -- the
+  # standard way to break long-context retrieval. This is a design choice; if
+  # you enable it, note it in your pre-registration.
 
 # Documented OOM fallback (§5, §1.9): the ONE permitted fallback. When a run
 # OOMs at 16384, replace it with 12288, log LOUDLY, and flag it in outputs.
@@ -47,6 +57,10 @@ probe:
     shell_same: "The access code for the {ADJ} {NOUN} is {VALUE}."
     # paraphrased template, different key, different VALUE
     shell_diff: "Remember that {NOUN} {ADJ} unlocks with {VALUE}."
+    # KEY-OVERLAP (hard): identical template, key shares the needle's ADJ or NOUN
+    # (see grid.similarity note). Same string as shell_same; the overlap is in
+    # the KEY the generator supplies, not the template.
+    shell_share: "The access code for the {ADJ} {NOUN} is {VALUE}."
 
   question_template: "\n\nWhat is the access code for the {ADJ} {NOUN}? Answer with the code only."
 
