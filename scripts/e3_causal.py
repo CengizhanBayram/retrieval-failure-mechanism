@@ -156,7 +156,7 @@ def main(argv=None):
     cell_pairs: dict = {}
     baselines: dict = {}   # id(probe) -> {"base": bool, "rerun": bool}
     for h in cells_used:
-        cell = _cellspec(surface[h]["axes"])
+        cell = _cellspec(surface[h]["axes"], surface[h])
         n = int(surface[h]["n_total"])
         pairs = _pairs_for_cell(model, tokenizer, factory, cell, n, seed, decoding_cfg, pair_min)
         cell_pairs[h] = pairs

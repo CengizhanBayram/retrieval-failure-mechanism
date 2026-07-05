@@ -62,6 +62,17 @@ def test_span_decode_verify(fast_tokenizer):
         assert d == dv
 
 
+def test_degenerate_placement_no_hang(fast_tokenizer):
+    """Tiny context + many distractors (fewer gaps than items) must NOT hang in
+    gap placement and must still align (regression for the infinite-loop bug)."""
+    f = _factory(fast_tokenizer)
+    cell = CellSpec("test_model", 96, 0.5, 10, "shell_share")
+    skels = {f.build(cell, i, seed=3).skeleton() for i in range(6)}
+    assert len(skels) == 1
+    p = f.build(cell, 0, seed=3)
+    assert len(p.distractor_spans) == 10
+
+
 def test_zero_distractor_baseline_has_no_distractor_spans(fast_tokenizer):
     f = _factory(fast_tokenizer)
     cell = CellSpec("test_model", 512, 0.5, 0, "none")
