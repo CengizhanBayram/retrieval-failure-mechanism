@@ -19,6 +19,7 @@ patch can be scoped to specific steps.
 
 from __future__ import annotations
 
+import gc
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -130,6 +131,14 @@ def generate_plain(model, tokenizer, input_ids, decoding_cfg) -> Generation:
     return _greedy_loop(model, tokenizer, input_ids, decoding_cfg, None, "first_step")
 
 
+def _oom_error_types():
+    import torch
+    oom = getattr(torch, "OutOfMemoryError", None)
+    cuda_oom = getattr(torch.cuda, "OutOfMemoryError", None)
+    types = tuple(t for t in (oom, cuda_oom) if t is not None)
+    return types or (RuntimeError,)
+
+
 def generate_plain_batch(model, tokenizer, input_ids_list, decoding_cfg) -> list["Generation"]:
     """Batched, left-padded greedy generation for many prompts at once.
 
@@ -137,6 +146,11 @@ def generate_plain_batch(model, tokenizer, input_ids_list, decoding_cfg) -> list
     throughput matters. Hooked capture/patching stay single-sequence. Greedy +
     max_new_tokens from the one decoding spec (§1.4); the grader reads the first
     line, so per-sequence newline stopping is unnecessary here.
+
+    GPU-ADAPTIVE: on a CUDA OOM the batch is halved and retried recursively, down
+    to a single sample — so the same code runs on a 22 GB L4 or an 80 GB A100
+    without tuning. If even ONE sample OOMs, the error propagates so the caller's
+    context-level fallback (§5) can act.
     """
     import torch
     if not input_ids_list:
@@ -150,14 +164,25 @@ def generate_plain_batch(model, tokenizer, input_ids_list, decoding_cfg) -> list
         pad = maxlen - len(ids)
         input_ids.append([pad_id] * pad + list(ids))
         attn.append([0] * pad + [1] * len(ids))
-    input_ids = torch.tensor(input_ids, device=device, dtype=torch.long)
-    attn = torch.tensor(attn, device=device, dtype=torch.long)
-    with torch.no_grad():
-        out = model.generate(input_ids=input_ids, attention_mask=attn,
-                             do_sample=False, num_beams=1,
-                             max_new_tokens=int(dec["max_new_tokens"]),
-                             pad_token_id=pad_id)
-    gen = out[:, input_ids.shape[1]:]
+    input_ids_t = torch.tensor(input_ids, device=device, dtype=torch.long)
+    attn_t = torch.tensor(attn, device=device, dtype=torch.long)
+    try:
+        with torch.no_grad():
+            out = model.generate(input_ids=input_ids_t, attention_mask=attn_t,
+                                 do_sample=False, num_beams=1,
+                                 max_new_tokens=int(dec["max_new_tokens"]),
+                                 pad_token_id=pad_id)
+    except _oom_error_types():
+        del input_ids_t, attn_t
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        if len(input_ids_list) == 1:
+            raise                                 # a single sample won't fit -> caller handles
+        mid = len(input_ids_list) // 2
+        return (generate_plain_batch(model, tokenizer, input_ids_list[:mid], decoding_cfg)
+                + generate_plain_batch(model, tokenizer, input_ids_list[mid:], decoding_cfg))
+    gen = out[:, input_ids_t.shape[1]:]
     results = []
     for row in gen:
         toks = [int(t) for t in row.tolist()]

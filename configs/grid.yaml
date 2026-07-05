@@ -67,7 +67,10 @@ probe:
   # across a cell's samples. `min_vocab_after_filter` guards that enough
   # survive for the largest cell (needle + all distractors, drawn w/o
   # replacement); otherwise fail loudly.
-  min_vocab_after_filter: 20
+  # Need >= (1 + max distractor count) = 11 of each per cell; the pools below are
+  # mostly COMMON SHORT words so plenty survive single-token filtering on every
+  # tokenizer (Mistral's filter was the tightest). Kept comfortably above 11.
+  min_vocab_after_filter: 14
   adjectives:
     - crimson
     - golden
@@ -76,39 +79,66 @@ probe:
     - hollow
     - frozen
     - amber
-    - velvet
     - copper
-    - marble
     - hidden
     - rusty
     - gentle
     - narrow
     - distant
     - bitter
-    - polished
-    - wooden
     - silver
     - shallow
-    - rugged
-    - solemn
-    - vivid
-    - fragrant
-    - restless
-    - humble
-    - luminous
-    - weathered
-    - nimble
-    - stubborn
-    - graceful
     - dusty
-    - radiant
     - sturdy
-    - somber
-    - tranquil
-    - jagged
-    - mellow
-    - brittle
-    - spirited
+    - red
+    - blue
+    - green
+    - gray
+    - black
+    - white
+    - brown
+    - dark
+    - pale
+    - bright
+    - warm
+    - cold
+    - cool
+    - soft
+    - hard
+    - firm
+    - loud
+    - calm
+    - quiet
+    - wild
+    - bold
+    - kind
+    - rich
+    - pure
+    - plain
+    - neat
+    - clean
+    - fresh
+    - sweet
+    - sharp
+    - smooth
+    - rough
+    - thick
+    - thin
+    - wide
+    - deep
+    - tall
+    - short
+    - huge
+    - tiny
+    - fast
+    - young
+    - empty
+    - heavy
+    - strong
+    - brave
+    - proud
+    - humble
+    - fierce
   nouns:
     - lantern
     - harbor
@@ -119,37 +149,75 @@ probe:
     - beacon
     - tunnel
     - falcon
-    - ledger
     - furnace
     - compass
-    - thicket
-    - glacier
-    - satchel
-    - turbine
     - cottage
     - vessel
     - pillar
-    - trolley
-    - cavalry
-    - foundry
-    - reservoir
-    - hamlet
-    - lattice
-    - quarry
-    - saddle
-    - windmill
-    - archway
-    - cistern
-    - drawbridge
-    - workshop
-    - meridian
-    - promenade
-    - courtyard
-    - aqueduct
-    - belfry
-    - granary
-    - paddock
-    - vineyard
+    - box
+    - key
+    - door
+    - road
+    - tree
+    - star
+    - moon
+    - lake
+    - hill
+    - rock
+    - cave
+    - wall
+    - path
+    - gate
+    - farm
+    - barn
+    - mill
+    - well
+    - bell
+    - boat
+    - ship
+    - cart
+    - coin
+    - desk
+    - book
+    - lamp
+    - ring
+    - flag
+    - fort
+    - horn
+    - nest
+    - oven
+    - pond
+    - roof
+    - tent
+    - yard
+    - bird
+    - wolf
+    - deer
+    - fox
+    - bear
+    - goat
+    - crow
+    - hawk
+    - frog
+    - fish
+    - seed
+    - leaf
+    - root
+    - rope
+    - nail
+    - drum
+    - harp
+    - mask
+    - cloak
+    - crown
+    - sword
+    - shield
+    - torch
+    - chain
+    - cage
+    - jar
+    - bowl
+    - cup
 
   # Filler bank (~30 templates). Pure padding: NO "access code", NO "unlocks",
   # NO uppercase alphanumeric codes, NO key/value patterns (§4.1). {TOPIC} is

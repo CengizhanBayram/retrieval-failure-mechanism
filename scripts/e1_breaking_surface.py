@@ -112,11 +112,13 @@ def _gen_grade_oom_safe(model, tokenizer, factory, cell, n, seed, decoding_cfg, 
     Returns (grades, fallback_applied, effective_ctx, eval_cell)."""
     import torch
     from failure_mech.probes import CellSpec
+    _OOM = tuple(t for t in (getattr(torch, "OutOfMemoryError", None),
+                             getattr(torch.cuda, "OutOfMemoryError", None)) if t) or (RuntimeError,)
     try:
         grades = _generate_and_grade(model, tokenizer, factory, cell, n, seed,
                                      decoding_cfg, start_idx=start_idx)
         return grades, False, cell.context_length, cell
-    except torch.cuda.OutOfMemoryError:
+    except _OOM:
         fb_ctx = C.apply_oom_fallback_ctx(grid_cfg, cell.context_length)
         if fb_ctx == cell.context_length:
             raise  # no fallback defined for this context -> fail loudly (§1.9)
