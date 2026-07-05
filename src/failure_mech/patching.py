@@ -139,22 +139,27 @@ def _oom_error_types():
     return types or (RuntimeError,)
 
 
-def generate_plain_batch(model, tokenizer, input_ids_list, decoding_cfg) -> list["Generation"]:
-    """Batched, left-padded greedy generation for many prompts at once.
-
-    Used for the no-hook GRADING passes (E1, and the E2/E3 pairing step) where
-    throughput matters. Hooked capture/patching stay single-sequence. Greedy +
-    max_new_tokens from the one decoding spec (§1.4); the grader reads the first
-    line, so per-sequence newline stopping is unnecessary here.
-
-    GPU-ADAPTIVE: on a CUDA OOM the batch is halved and retried recursively, down
-    to a single sample — so the same code runs on a 22 GB L4 or an 80 GB A100
-    without tuning. If even ONE sample OOMs, the error propagates so the caller's
-    context-level fallback (§5) can act.
-    """
+def _free_cuda(model=None):
+    """Release CUDA memory after an OOM. Critically, transformers PERSISTS a
+    reusable generation cache on ``model._cache``; if we don't drop it, each OOM
+    retry starts with less free memory and the split-and-retry spirals to a hard
+    OOM (observed on A100). Drop it, then empty the allocator cache."""
     import torch
-    if not input_ids_list:
-        return []
+    if model is not None and getattr(model, "_cache", None) is not None:
+        try:
+            model._cache = None
+        except Exception:  # noqa: BLE001
+            pass
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
+def _generate_batch_adaptive(model, tokenizer, input_ids_list, decoding_cfg):
+    """One left-padded greedy batch; on OOM halve and retry (order-preserving),
+    freeing the model cache between tries. A single sample that still OOMs
+    propagates so the caller's context-level fallback (§5) can act."""
+    import torch
     device = next(model.parameters()).device
     dec = decoding_cfg["decoding"]
     pad_id = tokenizer.pad_token_id
@@ -174,20 +179,57 @@ def generate_plain_batch(model, tokenizer, input_ids_list, decoding_cfg) -> list
                                  pad_token_id=pad_id)
     except _oom_error_types():
         del input_ids_t, attn_t
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+        _free_cuda(model)
         if len(input_ids_list) == 1:
-            raise                                 # a single sample won't fit -> caller handles
+            raise
         mid = len(input_ids_list) // 2
-        return (generate_plain_batch(model, tokenizer, input_ids_list[:mid], decoding_cfg)
-                + generate_plain_batch(model, tokenizer, input_ids_list[mid:], decoding_cfg))
+        return (_generate_batch_adaptive(model, tokenizer, input_ids_list[:mid], decoding_cfg)
+                + _generate_batch_adaptive(model, tokenizer, input_ids_list[mid:], decoding_cfg))
     gen = out[:, input_ids_t.shape[1]:]
     results = []
     for row in gen:
         toks = [int(t) for t in row.tolist()]
         results.append(Generation(token_ids=toks,
                                    text=tokenizer.decode(toks, skip_special_tokens=True)))
+    return results
+
+
+def generate_plain_batch(model, tokenizer, input_ids_list, decoding_cfg) -> list["Generation"]:
+    """Greedy generation for many prompts, TOKEN-BUDGETED and order-preserving.
+
+    Used for the no-hook GRADING passes (E1, and the E2/E3 pairing step). The
+    caller may pass ALL of a cell's probes at once — this chunks them by
+    ``batch.max_tokens_per_batch`` (length-sorted for packing, then mapped back
+    to input order) so a 100-probe x 16k cell never becomes one 1.6M-token batch
+    (that OOMs even an A100). Each chunk is GPU-adaptive (§ _generate_batch_
+    adaptive). Results are returned in the SAME order as ``input_ids_list`` so
+    callers can zip them with their probes.
+    """
+    if not input_ids_list:
+        return []
+    bcfg = decoding_cfg.get("batch", {})
+    max_tokens = int(bcfg.get("max_tokens_per_batch", 12288))
+    max_samples = int(bcfg.get("max_samples_per_batch", 8))
+    results: list = [None] * len(input_ids_list)
+    order = sorted(range(len(input_ids_list)), key=lambda i: len(input_ids_list[i]))
+
+    def flush(chunk_idx):
+        gens = _generate_batch_adaptive(
+            model, tokenizer, [input_ids_list[i] for i in chunk_idx], decoding_cfg)
+        for i, g in zip(chunk_idx, gens):
+            results[i] = g
+
+    chunk_idx: list = []
+    tok_sum = 0
+    for i in order:
+        L = len(input_ids_list[i])
+        if chunk_idx and (tok_sum + L > max_tokens or len(chunk_idx) >= max_samples):
+            flush(chunk_idx)
+            chunk_idx, tok_sum = [], 0
+        chunk_idx.append(i)
+        tok_sum += L
+    if chunk_idx:
+        flush(chunk_idx)
     return results
 
 
