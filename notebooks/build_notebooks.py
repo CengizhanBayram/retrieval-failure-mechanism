@@ -86,7 +86,11 @@ SETUP_PIP = code(r"""
 %%bash
 # Cell 1 — dependencies. Pin transformers to match the Part-1/Part-2 artifacts
 # so a captured/patched value is bit-compatible with the detection artifacts.
-pip install -q transformers==4.47.0 accelerate==1.13.0 bitsandbytes==0.49.2
+# NOTE: Colab often ships a newer transformers; the pin below downgrades it. If
+# the version check in the next cell shows != 4.47.0, RESTART THE RUNTIME and
+# re-run (a pre-imported transformers won't downgrade in-place). The capture code
+# is version-robust either way, but 4.47.0 is what the artifacts were made with.
+pip install -q "transformers==4.47.0" "accelerate==1.13.0" "bitsandbytes==0.49.2"
 pip install -q "numpy==2.0.2" "scipy==1.16.3" pyyaml huggingface_hub sentencepiece
 echo 'Install complete.'
 """)
@@ -156,7 +160,12 @@ def run(argv):
     if p.returncode != 0:
         raise RuntimeError(f'script failed ({p.returncode}): {argv}')
 
+import transformers, torch
+_vok = transformers.__version__.startswith('4.47')
 print('Setup OK. C, run() ready. PART3 =', PART3, '| RESULTS_DIR =', os.environ['RFM_RESULTS_DIR'])
+print(f'transformers={transformers.__version__} torch={torch.__version__}',
+      '' if _vok else '  <-- NOT the pinned 4.47.0; RESTART RUNTIME after Cell 1 for a '
+                       'provenance-clean run (code still works, recorded in provenance).')
 """)
 
 PREREG_GATE = code(r"""
