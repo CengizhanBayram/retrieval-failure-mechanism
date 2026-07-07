@@ -399,6 +399,140 @@ print(json.dumps(e4['causal_decision'], indent=2)[:2000])
     return notebook(cells)
 
 
+# ---------------------------------------------------------------------------
+# 05 — analyze the models that already broke (reuses existing E1 on Drive)
+# ---------------------------------------------------------------------------
+
+def nb_05_analyze_breaking() -> dict:
+    cells = [md(
+        "# 05 · Analyze the models that already broke\n"
+        "Your first run showed **OLMo-2** breaking naturally (15 cells, mean acc "
+        "0.43) and **Gemma-2** collapsing on long-context cells, but E2/E3 only "
+        "completed for the near-ceiling models. This notebook runs **E2 -> E3 -> "
+        "E4** for every model that is MISSING its output, **reusing the existing "
+        "E1 results on Drive** (no E1 re-run, no config change). OLMo-2 is the "
+        "one to watch.")]
+    cells += setup_cells()
+    cells.append(md("## Which models have breaking cells worth analyzing?"))
+    cells.append(code(r"""
+import os, json, glob
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+print(f'{"model":24s} {"breaking":>8s} {"E2 done":>8s}')
+for f in sorted(glob.glob(f'{RESULTS_DIR}/e1_breaking_cells_*.json')):
+    m = os.path.basename(f)[len('e1_breaking_cells_'):-5]
+    nb = len(json.load(open(f))['breaking_cells'])
+    e2 = os.path.exists(f'{RESULTS_DIR}/e2_signatures_{m}.json')
+    print(f'{m:24s} {nb:8d} {str(e2):>8s}')
+print('\n-> E2/E3 below run only for models MISSING their output. '
+      'Delete an e2/e3 json to force a re-run.')
+"""))
+    cells += _model_loop(
+        "E2 — signatures for the missing models",
+        "Runs only where `e2_signatures_{model}.json` is absent (OLMo-2, Gemma-2, "
+        "Mistral, Phi from your run). Near-ceiling models just produce 0 cells fast.",
+        "['scripts/e2_signatures.py', '--model', key]",
+        first_est_h=4.0,
+        skip_check="os.path.exists(f'{RESULTS_DIR}/e2_signatures_{key}.json')")
+    cells += _model_loop(
+        "E3 — causal patching for the missing models",
+        "Runs only where `e3_causal_{model}.json` is absent.",
+        "['scripts/e3_causal.py', '--model', key]",
+        first_est_h=6.0,
+        skip_check="os.path.exists(f'{RESULTS_DIR}/e3_causal_{key}.json')")
+    cells.append(md("## E4 — refresh the family table + causal decision"))
+    cells.append(code("run(['scripts/e4_families.py', '--models'] + %s)" % json.dumps(MODELS)))
+    cells.append(md("## Read the headline signal"))
+    cells.append(code(r"""
+import json, os
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+for f in sorted(__import__('glob').glob(f'{RESULTS_DIR}/e2_signatures_*.json')):
+    if any(t in f for t in ('_wu','_ksens','_seed','_steps3')): continue
+    d = json.load(open(f)); m = os.path.basename(f)[len('e2_signatures_'):-5]
+    rates = {k: round(v,3) for k,v in d['sample_level']['bucket_rates'].items() if v>0}
+    print(f'{m:24s} cells={len(d["cells_used"])} pairs={d["pairs_used"]}  buckets={rates}')
+print()
+e4 = json.load(open(f'{RESULTS_DIR}/e4_families.json'))
+print('causal effects (effect = BH-rejected AND margin met):')
+for k, per in e4.get('causal_decision', {}).items():
+    for mdl, dirs in per.items():
+        for d_, v in dirs.items():
+            if v.get('effect'):
+                print(f'  k={k} {mdl} {d_}: EFFECT (p={v["p"]}, margin_met={v["margin_met"]})')
+print('  (none printed above = no pre-registered causal effect yet)')
+"""))
+    return notebook(cells)
+
+
+# ---------------------------------------------------------------------------
+# 06 — harder task: enable shell_share, clean re-run of the whole panel
+# ---------------------------------------------------------------------------
+
+def nb_06_shell_share_rerun() -> dict:
+    cells = [md(
+        "# 06 · Harder task (shell_share) — clean full re-run\n"
+        "The strong models sit at ~0.99 accuracy on shell_same/shell_diff, so they "
+        "produce no breaking cells. This notebook turns on the **key-overlap "
+        "distractor** (`shell_share`), **clears results**, and re-runs the whole "
+        "panel E1 -> E2 -> E3 -> E4 so every family can break.\n\n"
+        "> **This is a design change** — note `shell_share` in your pre-registration, "
+        "and ideally commit it to `grid.yaml` (so its hash is in provenance) rather "
+        "than only patching it here. The grid grows from 140 to ~200 cells/model.")]
+    cells += setup_cells()
+    cells.append(md("## 1) Enable shell_share in the cloned grid.yaml"))
+    cells.append(code(r"""
+gp = '/content/rope-part3/configs/grid.yaml'
+txt = open(gp).read()
+OLD = 'similarity: ["shell_same", "shell_diff"]'          # the active (uncommented) grid line
+NEW = 'similarity: ["shell_same", "shell_diff", "shell_share"]'
+if OLD in txt:                                            # OLD matches only the active line, not the comment
+    open(gp, 'w').write(txt.replace(OLD, NEW, 1))
+    print('shell_share ENABLED in grid.similarity (commit grid.yaml for a provenance-clean run).')
+elif NEW in txt.replace('#', ''):                         # already uncommented
+    print('shell_share already enabled.')
+else:
+    print('Could not find the grid.similarity line to patch — inspect configs/grid.yaml manually.')
+# sanity: show the active line
+for ln in open(gp):
+    s = ln.strip()
+    if s.startswith('similarity:'):
+        print('active grid.similarity ->', s); break
+"""))
+    cells.append(md("## 2) Clear results for a clean re-run (config changed)\n"
+                    "The old 140-cell results are incompatible with the new grid. This wipes "
+                    "`RFM_RESULTS_DIR`. **Set `CONFIRM = True` to run it.**"))
+    cells.append(code(r"""
+import os, shutil
+CONFIRM = False   # <-- set True to actually clear results
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+if CONFIRM:
+    shutil.rmtree(RESULTS_DIR, ignore_errors=True); os.makedirs(RESULTS_DIR, exist_ok=True)
+    print('cleared', RESULTS_DIR)
+else:
+    print('SKIPPED clear (CONFIRM=False). The run below will resume/mix with old results '
+          'unless you clear first — set CONFIRM=True.')
+"""))
+    cells += _model_loop(
+        "3) E1 — breaking surface (harder grid)",
+        "~200 cells/model now. Resume-safe; the checkpoint fingerprint invalidates "
+        "any stale cell automatically.",
+        "['scripts/e1_breaking_surface.py', '--model', key, '--stage', 'auto']",
+        first_est_h=6.0,
+        skip_check="os.path.exists(f'{RESULTS_DIR}/e1_breaking_cells_{key}.json')")
+    cells += _model_loop(
+        "4) E2 — signatures", "",
+        "['scripts/e2_signatures.py', '--model', key]",
+        first_est_h=4.0,
+        skip_check="os.path.exists(f'{RESULTS_DIR}/e2_signatures_{key}.json')")
+    cells += _model_loop(
+        "5) E3 — causal patching", "",
+        "['scripts/e3_causal.py', '--model', key]",
+        first_est_h=6.0,
+        skip_check="os.path.exists(f'{RESULTS_DIR}/e3_causal_{key}.json')")
+    cells.append(md("## 6) E4 — family table + causal decision"))
+    cells.append(code("run(['scripts/e4_families.py', '--models'] + %s)" % json.dumps(MODELS)))
+    return notebook(cells)
+
+
 def main():
     outputs = {
         "00_setup_and_guardrails.ipynb": nb_00(),
@@ -406,6 +540,8 @@ def main():
         "02_e2_signatures.ipynb": nb_e2(),
         "03_e3_causal.ipynb": nb_e3(),
         "04_e4_e5_analysis.ipynb": nb_e4_e5(),
+        "05_analyze_breaking_models.ipynb": nb_05_analyze_breaking(),
+        "06_shell_share_full_rerun.ipynb": nb_06_shell_share_rerun(),
     }
     for name, nb in outputs.items():
         path = NB_DIR / name

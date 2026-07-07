@@ -123,6 +123,11 @@ def main(argv=None):
     sample_bucket_counts = {b: 0 for b in list(classify.BUCKETS) + [WINDOW_LIMITED]}
     crosstab: dict = {}             # behavior_label -> bucket -> count
     reference_stats: dict = {}
+    # Per-failure-sample sample-level masses + labels. Lets the researcher
+    # calibrate m2's min_distractor_mass against the pilot distribution and audit
+    # cross-tab anomalies (e.g. behaviorally distractor_hit but mechanistically
+    # m1_silence -> what was the distractor_mass?).
+    failure_sample_masses: list = []
     cells_used, pairs_used = [], 0
 
     for h in breaking:
@@ -202,13 +207,18 @@ def main(argv=None):
                     if not masses_by_sample[fi][hd].window_limited]
             if not live:
                 sl_bucket = WINDOW_LIMITED
+                sl_pt = classify.MassPoint(float("nan"), float("nan"))
             else:
-                sl_bucket = classify.classify_point(
-                    classify.sample_level_mass(live), sl_ref, rules)
+                sl_pt = classify.sample_level_mass(live)
+                sl_bucket = classify.classify_point(sl_pt, sl_ref, rules)
             sample_bucket_counts[sl_bucket] += 1
             beh = grades_by_sample[fi].grade  # distractor_hit / other_wrong / empty
             crosstab.setdefault(beh, {b: 0 for b in list(classify.BUCKETS) + [WINDOW_LIMITED]})
             crosstab[beh][sl_bucket] += 1
+            failure_sample_masses.append({
+                "cell": h, "needle_mass": sl_pt.needle_mass,
+                "distractor_mass": sl_pt.distractor_mass,
+                "bucket": sl_bucket, "behavioral": beh})
 
     # ---- paired stats per head (BH within model) ----
     per_head_out, pvals, keys = {}, [], []
@@ -254,6 +264,7 @@ def main(argv=None):
         },
         "crosstab_behavior_x_mechanism": crosstab,
         "reference_stats": reference_stats,
+        "failure_sample_masses": failure_sample_masses,
         "pairs_used": pairs_used,
         "cells_used": cells_used,
     }
