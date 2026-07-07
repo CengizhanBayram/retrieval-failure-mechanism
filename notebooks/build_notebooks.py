@@ -231,13 +231,15 @@ run(['-m', 'pytest', 'tests/test_prereg.py', 'tests/test_stats.py',
      'tests/test_grading.py', 'tests/test_classify.py', 'tests/test_probes.py', '-q'])
 """))
     cells.append(md("## Eager-reference capture check on the 7 PINNED models (§4.3, §10)\n"
-                    "For each model: load at its pinned SHA in **eager** (Gemma-2 requires "
-                    "eager for softcapping), then confirm the manual row matches the model's "
-                    "own attention row to < 1e-3 for several detected retrieval heads. This "
-                    "exercises every attention pipeline in the panel: standard GQA "
-                    "(Llama/Qwen/Mistral), Gemma-2 softcap + query-scale + sliding window, "
-                    "OLMo-2 QK-norm, and Phi-3 fused-qkv + partial rotary. **This is the "
-                    "arbiter — trust no capture number until every model prints PASS.**"))
+                    "Confirms the manual attention row matches the model's own attention row, "
+                    "exercising every pipeline: standard GQA (Llama/Qwen/Mistral), Gemma-2 "
+                    "softcap+query-scale+window, OLMo-2 QK-norm, Phi-3 fused-qkv+partial-rotary.\n\n"
+                    "**Loaded in fp32** on purpose: this isolates *is the formula right?* from "
+                    "bf16 rounding. bf16 has ~2⁻⁸ ≈ 4e-3 precision, so a bf16 model's own "
+                    "attention differs from an fp32 recompute by a few e-3 — that is NOT a bug "
+                    "and is far below the mass thresholds (m1 floor 0.02, m2 min 0.10). The "
+                    "gate is: **fp32 max|manual−eager| < 1e-3 for every model.** The reported "
+                    "bf16 delta is informational."))
     cells.append(code(r"""
 import numpy as np, torch, gc
 from failure_mech import panel as P, detect, capture as CAP
@@ -262,8 +264,9 @@ def manual_row(model, ids, l, h):
 
 for key in %(models)s:
     try:
+        # fp32 for the math gate (bf16 rounding would mask correctness at ~e-3).
         model, tok, mcfg = P.load_model(paths, panel_reg, key,
-                                        attn_implementation='eager', dtype='bfloat16')
+                                        attn_implementation='eager', dtype='float32')
         ids = tok(TEXT, add_special_tokens=True)['input_ids']
         det = detect.load_detection(P.detection_dir(paths), P.resolve_model_key(paths, key),
                                     int(paths['detection_artifacts']['seed']))
