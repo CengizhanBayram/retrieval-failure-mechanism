@@ -278,22 +278,41 @@ def load_model(
     hf_id, rev = cfg["hf_id"], cfg["revision"]
     torch_dtype = getattr(torch, dtype)
 
+    log = logging.getLogger(__name__)
     requested = attn_implementation
-    if cfg.get("family") == "gemma":
-        attn_implementation = "eager"   # softcap correctness (sdpa drops it silently)
+    # Force eager where required:
+    #   gemma : softcap correctness (sdpa silently drops attention-logit softcap).
+    #   phi   : Phi3ForCausalLM has no sdpa kernel in the pinned transformers
+    #           (raises ValueError at load) and flash-attn can't do its window.
+    if cfg.get("family") in ("gemma", "phi"):
+        attn_implementation = "eager"
         if requested != "eager":
-            logging.getLogger(__name__).info(
-                "Gemma-2 forced to eager attention for softcapping correctness "
-                "(requested %s).", requested)
+            log.info("%s forced to eager attention (family=%s, requested %s).",
+                     cfg.get("panel_key"), cfg.get("family"), requested)
 
     tokenizer = AutoTokenizer.from_pretrained(hf_id, revision=rev, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(
-        hf_id, revision=rev, torch_dtype=torch_dtype, device_map=device_map,
-        attn_implementation=attn_implementation, trust_remote_code=True,
-    )
+    def _load(attn):
+        return AutoModelForCausalLM.from_pretrained(
+            hf_id, revision=rev, torch_dtype=torch_dtype, device_map=device_map,
+            attn_implementation=attn, trust_remote_code=True,
+        )
+
+    try:
+        model = _load(attn_implementation)
+    except ValueError as e:
+        # General safety net: an architecture that doesn't support the requested
+        # backend (e.g. "does not support ... scaled_dot_product_attention") falls
+        # back to eager rather than crashing the run. Any other ValueError re-raises.
+        if attn_implementation != "eager" and "does not support" in str(e):
+            log.warning("%s does not support attn=%s (%s); falling back to eager.",
+                        hf_id, attn_implementation, str(e).splitlines()[0][:120])
+            attn_implementation = "eager"
+            model = _load("eager")
+        else:
+            raise
     model.eval()
 
     n_heads, n_kv = head_counts(model)

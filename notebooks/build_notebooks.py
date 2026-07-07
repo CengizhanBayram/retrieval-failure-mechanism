@@ -244,7 +244,7 @@ def manual_row(model, ids, l, h):
     with torch.no_grad(), CAP._QProjTap(model, {l}) as tap:
         pos = torch.arange(0, len(ids)).unsqueeze(0).to(next(model.parameters()).device)
         out = model(input_ids=torch.tensor([ids]).to(pos.device), position_ids=pos, use_cache=True)
-        cos, sin = CAP._rope_cos_sin(model, pos)
+        cos, sin = tap.pos_emb if tap.pos_emb is not None else CAP._rope_cos_sin(model, pos)
         qr = CAP.query_rotated_last(model, l, tap.store[l], cos[:, -1, :], sin[:, -1, :],
                                     nH, P.head_dim(model))
         return CAP._row_for_head(model, l, h, qr, CAP._layer_keys(out.past_key_values, l),

@@ -38,7 +38,9 @@ def _manual_row(model, tokenizer, input_ids, layer, head):
     with torch.no_grad(), CAP._QProjTap(model, {layer}) as tap:
         position_ids = torch.arange(0, ids.shape[1], device=device).unsqueeze(0)
         out = model(input_ids=ids, position_ids=position_ids, use_cache=True)
-        cos, sin = CAP._rope_cos_sin(model, position_ids)
+        # exercise the production path: cos/sin captured from the decoder layer,
+        # with the rotary-module fallback.
+        cos, sin = tap.pos_emb if tap.pos_emb is not None else CAP._rope_cos_sin(model, position_ids)
         q_rot = CAP.query_rotated_last(model, layer, tap.store[layer],
                                        cos[:, -1, :], sin[:, -1, :], n_heads,
                                        panel.head_dim(model))

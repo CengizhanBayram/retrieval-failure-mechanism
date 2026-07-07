@@ -45,13 +45,26 @@ def _rotate_half(x):
 def _rope_cos_sin(model, position_ids):
     """(cos, sin) for ``position_ids`` from the model's own rotary module.
 
+    FALLBACK ONLY. The model's rotary module lives in different places across
+    architectures/versions (``model.model.rotary_emb`` for Llama/Qwen; absent on
+    Gemma-2 in some versions; per-layer on older ones). The primary path captures
+    the ``position_embeddings`` the model actually passes to its decoder layers
+    (see ``_QProjTap``), which is architecture-independent. This helper is used
+    only if that capture came back empty.
+
     position_ids: LongTensor [batch, seq]. Returns cos, sin [batch, seq, head_dim].
     """
     import torch
     device = next(model.parameters()).device
     dtype = next(model.parameters()).dtype
     dummy = torch.zeros(1, 1, 1, device=device, dtype=dtype)
-    rot = model.model.rotary_emb
+    rot = getattr(model.model, "rotary_emb", None)
+    if rot is None:                                   # older per-layer layout
+        rot = getattr(model.model.layers[0].self_attn, "rotary_emb", None)
+    if rot is None:
+        raise AttributeError(
+            "Could not locate the model's rotary module and no position_embeddings "
+            "were captured from the decoder layers — cannot recompute post-RoPE q.")
     with torch.no_grad():
         cos, sin = rot(dummy, position_ids.to(device))
     return cos, sin
@@ -172,6 +185,7 @@ class _QProjTap:
         self.model = model
         self.layers = layers
         self.store: dict[int, object] = {}
+        self.pos_emb = None            # (cos, sin) the model passes to its layers
         self._handles = []
 
     def __enter__(self):
@@ -191,6 +205,19 @@ class _QProjTap:
                 return hook
 
             self._handles.append(proj.register_forward_hook(make(li)))
+
+            # Capture the (cos, sin) the DECODER LAYER receives — robust across
+            # architectures/versions (Gemma-2 has no model.rotary_emb here).
+            dec_layer = self.model.model.layers[li]
+
+            def pos_hook(_m, _args, kwargs):
+                pe = kwargs.get("position_embeddings")
+                if pe is not None:
+                    self.pos_emb = pe
+                return None
+
+            self._handles.append(
+                dec_layer.register_forward_pre_hook(pos_hook, with_kwargs=True))
         return self
 
     def __exit__(self, *exc):
@@ -284,7 +311,12 @@ def capture_head_masses(
             past = out.past_key_values
             cur_position = seq_from + cur_ids.shape[1] - 1  # index of the answer query
 
-            cos, sin = _rope_cos_sin(model, position_ids)
+            # cos/sin the model itself computed (captured from the decoder layer);
+            # fall back to the rotary module only if the model didn't pass them.
+            if tap.pos_emb is not None:
+                cos, sin = tap.pos_emb
+            else:
+                cos, sin = _rope_cos_sin(model, position_ids)
             cos_p, sin_p = cos[:, -1, :], sin[:, -1, :]    # last position
 
             head_dim = panel.head_dim(model)
