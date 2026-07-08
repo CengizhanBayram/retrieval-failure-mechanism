@@ -143,6 +143,8 @@ def main(argv=None):
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--stage", choices=["1", "2", "auto"], default="auto")
     ap.add_argument("--prereg", default=None, help="override prereg path (tests only)")
+    ap.add_argument("--fresh", action="store_true",
+                    help="recompute + OVERWRITE every cell, ignoring existing checkpoints")
     args = ap.parse_args(argv)
 
     grid_cfg = C.load_yaml(args.config)
@@ -177,7 +179,9 @@ def main(argv=None):
     fingerprint = C.probe_fingerprint(
         [args.config, C.config_path("decoding.yaml")], mcfg["revision"], seed)
     ckpt = C.CheckpointManager(paths_cfg["output"]["results_dir"], EXP, args.model,
-                               fingerprint=fingerprint)
+                               fingerprint=fingerprint, fresh=args.fresh)
+    if args.fresh:
+        log.warning("--fresh: recomputing and OVERWRITING all cells for %s.", args.model)
 
     surface: dict[str, dict] = {}
     # ---- Stage 1 ----

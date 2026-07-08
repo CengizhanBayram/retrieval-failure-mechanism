@@ -123,7 +123,7 @@ class CheckpointManager:
     recomputing finished cells and logs what it skipped."""
 
     def __init__(self, results_dir: str | Path, exp: str, model_key: str,
-                 fingerprint: str | None = None):
+                 fingerprint: str | None = None, fresh: bool = False):
         self.root = Path(results_dir) / "checkpoints" / f"{exp}_{model_key}"
         self.root.mkdir(parents=True, exist_ok=True)
         self.manifest_path = self.root / "manifest.json"
@@ -133,6 +133,9 @@ class CheckpointManager:
         # or the seed INVALIDATES stale cells instead of silently mixing them
         # with new ones (§1.7, §1.8).
         self.fingerprint = fingerprint
+        # fresh=True recomputes and OVERWRITES every cell, ignoring existing
+        # checkpoints (a clean run, no resume).
+        self.fresh = fresh
 
     def _load_manifest(self) -> dict:
         if self.manifest_path.exists():
@@ -144,6 +147,8 @@ class CheckpointManager:
         return self.root / f"cell_{cell_hash}.json"
 
     def is_done(self, cell_hash: str) -> bool:
+        if self.fresh:                 # overwrite mode: nothing counts as done
+            return False
         p = self.cell_path(cell_hash)
         if not p.exists():
             return False
