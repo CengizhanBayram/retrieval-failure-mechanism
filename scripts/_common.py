@@ -192,14 +192,20 @@ def _json_default(o):
 
 
 def probe_fingerprint(config_paths: list, model_sha, seed) -> str:
-    """Fingerprint of everything that determines a cell's per-sample results:
-    the config bytes (grid/decoding — templates, vocab, chat-template flag,
-    decoding spec), the pinned model SHA and the seed. Used to invalidate stale
-    checkpoints when any of these change."""
+    """Fingerprint of everything that determines a cell's per-sample results: the
+    config bytes (grid/decoding — templates, vocab, chat-template flag, decoding
+    spec), the pinned model SHA, the seed, AND the probe-generation source
+    (probes.py, spans.py). Including the code means a change to e.g. the
+    single-token filter invalidates stale checkpoints instead of silently mixing
+    old- and new-filter probes."""
     import hashlib
     h = hashlib.sha256()
     for p in config_paths:
         h.update(Path(p).read_bytes())
+    for src in ("src/failure_mech/probes.py", "src/failure_mech/spans.py"):
+        sp = REPO_ROOT / src
+        if sp.exists():
+            h.update(sp.read_bytes())
     h.update(str(model_sha).encode("utf-8"))
     h.update(str(seed).encode("utf-8"))
     return h.hexdigest()[:16]

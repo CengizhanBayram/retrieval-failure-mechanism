@@ -143,11 +143,18 @@ class ProbeFactory:
         return len(self.tok(text, add_special_tokens=False)["input_ids"])
 
     def _filter_single_token(self, words: list[str]) -> list[str]:
-        """Keep words that tokenise to exactly one token WITH a leading space,
-        preserving config order (determinism)."""
+        """Keep words that occupy exactly ONE token mid-sentence (as they appear
+        in the templates: '... the {ADJ} {NOUN} ...'), preserving config order.
+
+        Measured by the token INCREMENT of inserting ' {word}' into a fixed
+        context, NOT by tokenising ' {word}' standalone. SentencePiece tokenizers
+        (Phi-3) emit an extra leading-space token for a standalone ' word' (so the
+        naive check rejected everything), but in real context the word is one
+        token. The increment is robust across BPE and SentencePiece."""
+        base = self._n_tokens("the apple.")
         keep = []
         for w in words:
-            if self._n_tokens(" " + w) == 1:
+            if self._n_tokens("the " + w + " apple.") - base == 1:
                 keep.append(w)
         return keep
 
