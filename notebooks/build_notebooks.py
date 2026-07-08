@@ -291,19 +291,27 @@ for key in %(models)s:
 # Experiment-loop notebooks (E1..E5)
 # ---------------------------------------------------------------------------
 
-def _model_loop(title, subtitle, script_argv_tmpl, first_est_h, skip_check) -> list[dict]:
+def _model_loop(title, subtitle, script_argv_tmpl, first_est_h, skip_check,
+                fresh_arg=None, overwrite_default=False) -> list[dict]:
     """A resume-safe, 24 h-guarded model loop that shells out to a Part-3 script.
     ``skip_check`` is a python expression (given ``key``, ``RESULTS_DIR``) that is
-    True when the model's output already exists."""
+    True when the model's output already exists. ``OVERWRITE`` in the generated
+    cell recomputes + overwrites ALL models (ignore existing outputs);
+    ``fresh_arg`` (e.g. '--fresh') is appended to the script call in that mode so
+    it also ignores per-cell checkpoints (E1). ``overwrite_default`` sets the
+    cell's initial ``OVERWRITE`` value."""
+    fresh = json.dumps([fresh_arg] if fresh_arg else [])
     return [
         md(f"## {title}\n{subtitle}"),
         code(r"""
 import os, time, gc, torch
+OVERWRITE = %(ovr)s   # True = recompute + OVERWRITE every model; False = skip finished (resume)
 RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
 MODELS = %(models)s
+FRESH = %(fresh)s
 start = time.time(); model_times = []
 for key in MODELS:
-    if %(skip)s:
+    if (not OVERWRITE) and (%(skip)s):
         print(key, '-> output exists, skip'); continue
     ok, elapsed_h, est_h = C.time_guard(start, model_times, first_est_h=%(est).1f)
     if not ok:
@@ -311,7 +319,7 @@ for key in MODELS:
               f'Re-run to resume (finished models are skipped).'); break
     t0 = time.time()
     try:
-        run(%(argv)s)
+        run(%(argv)s + (FRESH if OVERWRITE else []))
         model_times.append((time.time() - t0) / 3600.0)
         print(key, 'done in', round(model_times[-1], 2), 'h')
     except Exception as e:
@@ -324,7 +332,8 @@ for key in MODELS:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 """ % {"models": json.dumps(MODELS), "skip": skip_check, "est": first_est_h,
-        "cap": HARD_CAP_H, "argv": script_argv_tmpl}),
+        "cap": HARD_CAP_H, "argv": script_argv_tmpl, "fresh": fresh,
+        "ovr": "True" if overwrite_default else "False"}),
     ]
 
 
@@ -343,7 +352,8 @@ def nb_e1() -> dict:
         "under the 23 h cap.",
         "['scripts/e1_breaking_surface.py', '--model', key, '--stage', 'auto']",
         first_est_h=5.0,
-        skip_check="os.path.exists(f'{RESULTS_DIR}/e1_breaking_cells_{key}.json')")
+        skip_check="os.path.exists(f'{RESULTS_DIR}/e1_breaking_cells_{key}.json')",
+        fresh_arg="--fresh")
     return notebook(cells)
 
 
@@ -529,17 +539,20 @@ else:
         "any stale cell automatically.",
         "['scripts/e1_breaking_surface.py', '--model', key, '--stage', 'auto']",
         first_est_h=6.0,
-        skip_check="os.path.exists(f'{RESULTS_DIR}/e1_breaking_cells_{key}.json')")
+        skip_check="os.path.exists(f'{RESULTS_DIR}/e1_breaking_cells_{key}.json')",
+        fresh_arg="--fresh", overwrite_default=True)
     cells += _model_loop(
         "4) E2 — signatures", "",
         "['scripts/e2_signatures.py', '--model', key]",
         first_est_h=4.0,
-        skip_check="os.path.exists(f'{RESULTS_DIR}/e2_signatures_{key}.json')")
+        skip_check="os.path.exists(f'{RESULTS_DIR}/e2_signatures_{key}.json')",
+        overwrite_default=True)
     cells += _model_loop(
         "5) E3 — causal patching", "",
         "['scripts/e3_causal.py', '--model', key]",
         first_est_h=6.0,
-        skip_check="os.path.exists(f'{RESULTS_DIR}/e3_causal_{key}.json')")
+        skip_check="os.path.exists(f'{RESULTS_DIR}/e3_causal_{key}.json')",
+        overwrite_default=True)
     cells.append(md("## 6) E4 — family table + causal decision"))
     cells.append(code("run(['scripts/e4_families.py', '--models'] + %s)" % json.dumps(MODELS)))
     return notebook(cells)
