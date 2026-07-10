@@ -210,6 +210,29 @@ MODELS = ["llama31_8b_instruct", "gemma2_9b_it", "mistral_7b_instruct",
           "qwen25_3b_instruct"]
 
 
+# Idempotent shell_share enable. Shared by notebooks 06 (E1+E2) and 07 (E3+E4) —
+# BOTH need it because E3 rebuilds the probes from grid.yaml, and a fresh clone
+# without shell_share would produce different probes than E1/E2 used.
+SHELL_SHARE_CELL = code(r"""
+gp = '/content/rope-part3/configs/grid.yaml'
+txt = open(gp).read()
+OLD = 'similarity: ["shell_same", "shell_diff"]'          # the active (uncommented) grid line
+NEW = 'similarity: ["shell_same", "shell_diff", "shell_share"]'
+if OLD in txt:                                            # OLD matches only the active line, not the comment
+    open(gp, 'w').write(txt.replace(OLD, NEW, 1))
+    print('shell_share ENABLED in grid.similarity (commit grid.yaml for a provenance-clean run).')
+elif NEW in txt.replace('#', ''):                         # already uncommented
+    print('shell_share already enabled.')
+else:
+    print('Could not find the grid.similarity line to patch — inspect configs/grid.yaml manually.')
+# sanity: show the active line
+for ln in open(gp):
+    s = ln.strip()
+    if s.startswith('similarity:'):
+        print('active grid.similarity ->', s); break
+""")
+
+
 # ---------------------------------------------------------------------------
 # 00 — setup + guardrails (the researcher's first-run gate)
 # ---------------------------------------------------------------------------
@@ -491,34 +514,19 @@ print('  (none printed above = no pre-registered causal effect yet)')
 
 def nb_06_shell_share_rerun() -> dict:
     cells = [md(
-        "# 06 · Harder task (shell_share) — clean full re-run\n"
+        "# 06 · Harder task (shell_share) — clean re-run: **E1 + E2**\n"
         "The strong models sit at ~0.99 accuracy on shell_same/shell_diff, so they "
         "produce no breaking cells. This notebook turns on the **key-overlap "
-        "distractor** (`shell_share`), **clears results**, and re-runs the whole "
-        "panel E1 -> E2 -> E3 -> E4 so every family can break.\n\n"
+        "distractor** (`shell_share`) and re-runs **E1 -> E2** for the whole panel, "
+        "**overwriting** any stale results.\n\n"
+        "**E3 + E4 now live in notebook 07** — E3 is the heaviest experiment and was "
+        "overrunning the Colab session when bundled here. Run 06, then 07.\n\n"
         "> **This is a design change** — note `shell_share` in your pre-registration, "
         "and ideally commit it to `grid.yaml` (so its hash is in provenance) rather "
         "than only patching it here. The grid grows from 140 to ~200 cells/model.")]
     cells += setup_cells()
     cells.append(md("## 1) Enable shell_share in the cloned grid.yaml"))
-    cells.append(code(r"""
-gp = '/content/rope-part3/configs/grid.yaml'
-txt = open(gp).read()
-OLD = 'similarity: ["shell_same", "shell_diff"]'          # the active (uncommented) grid line
-NEW = 'similarity: ["shell_same", "shell_diff", "shell_share"]'
-if OLD in txt:                                            # OLD matches only the active line, not the comment
-    open(gp, 'w').write(txt.replace(OLD, NEW, 1))
-    print('shell_share ENABLED in grid.similarity (commit grid.yaml for a provenance-clean run).')
-elif NEW in txt.replace('#', ''):                         # already uncommented
-    print('shell_share already enabled.')
-else:
-    print('Could not find the grid.similarity line to patch — inspect configs/grid.yaml manually.')
-# sanity: show the active line
-for ln in open(gp):
-    s = ln.strip()
-    if s.startswith('similarity:'):
-        print('active grid.similarity ->', s); break
-"""))
+    cells.append(SHELL_SHARE_CELL)
     cells.append(md("## 2) Clear results for a clean re-run (config changed)\n"
                     "The old 140-cell results are incompatible with the new grid. This wipes "
                     "`RFM_RESULTS_DIR`. **Set `CONFIRM = True` to run it.**"))
@@ -530,31 +538,110 @@ if CONFIRM:
     shutil.rmtree(RESULTS_DIR, ignore_errors=True); os.makedirs(RESULTS_DIR, exist_ok=True)
     print('cleared', RESULTS_DIR)
 else:
-    print('SKIPPED clear (CONFIRM=False). The run below will resume/mix with old results '
-          'unless you clear first — set CONFIRM=True.')
+    print('SKIPPED clear (CONFIRM=False). OVERWRITE=True below still recomputes every '
+          'model, but clearing also removes orphaned files from older runs.')
 """))
     cells += _model_loop(
         "3) E1 — breaking surface (harder grid)",
-        "~200 cells/model now. Resume-safe; the checkpoint fingerprint invalidates "
-        "any stale cell automatically.",
+        "~200 cells/model now. `OVERWRITE=True` + `--fresh` recompute and overwrite "
+        "every cell — every model must log `200 cells`, none should say `skip`.",
         "['scripts/e1_breaking_surface.py', '--model', key, '--stage', 'auto']",
         first_est_h=6.0,
         skip_check="os.path.exists(f'{RESULTS_DIR}/e1_breaking_cells_{key}.json')",
         fresh_arg="--fresh", overwrite_default=True)
     cells += _model_loop(
-        "4) E2 — signatures", "",
+        "4) E2 — signatures",
+        "Capture + four-bucket classification on the breaking cells.",
         "['scripts/e2_signatures.py', '--model', key]",
         first_est_h=4.0,
         skip_check="os.path.exists(f'{RESULTS_DIR}/e2_signatures_{key}.json')",
         overwrite_default=True)
+    cells.append(md("## 5) Check the run is clean, then continue in notebook 07\n"
+                    "Every model must show `ncells=200` and `shell_share` in its sims — if any "
+                    "shows 140, it was skipped and the panel is mixed."))
+    cells.append(code(r"""
+import json, glob, os, statistics
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+for f in sorted(glob.glob(f'{RESULTS_DIR}/e1_surface_*.json')):
+    m = os.path.basename(f)[len('e1_surface_'):-5]
+    cells_ = json.load(open(f))['cells']
+    sims = sorted({c['axes']['similarity'] for c in cells_.values()})
+    accs = [c['accuracy'] for c in cells_.values()]
+    brk = sum(1 for a in accs if 0.2 <= a <= 0.8)
+    ok = (len(cells_) == 200 and 'shell_share' in sims)
+    print(f'{m:24s} ncells={len(cells_):3d} mean={statistics.mean(accs):.3f} '
+          f'breaking={brk:3d} {"OK" if ok else "<-- STALE/MIXED"}')
+print('\nIf all OK -> run notebook 07 (E3 causal + E4).')
+"""))
+    return notebook(cells)
+
+
+# ---------------------------------------------------------------------------
+# 07 — E3 causal + E4 (split out of 06: E3 is the heaviest experiment)
+# ---------------------------------------------------------------------------
+
+def nb_07_e3_e4() -> dict:
+    cells = [md(
+        "# 07 · E3 Causal Patching + E4 Families\n"
+        "Split out of notebook 06 because **E3 is the heaviest experiment** "
+        "(3 k-values x ~8 forwards per pair x hundreds of pairs) and 06 was "
+        "overrunning the Colab session.\n\n"
+        "**Run this AFTER 06 finishes E1+E2.** It reads E1/E2 outputs from Drive.\n\n"
+        "> It re-enables `shell_share` in `grid.yaml` because **E3 rebuilds the probes** "
+        "— a fresh clone without `shell_share` would generate different probes than "
+        "E1/E2 did. (Committing `shell_share` to `grid.yaml` makes this a no-op.)")]
+    cells += setup_cells()
+    cells.append(md("## 1) Re-enable shell_share (must match the grid E1/E2 used)"))
+    cells.append(SHELL_SHARE_CELL)
+    cells.append(md("## 2) Sanity: E1/E2 outputs present and on the 200-cell grid?"))
+    cells.append(code(r"""
+import json, glob, os
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+bad = 0
+for f in sorted(glob.glob(f'{RESULTS_DIR}/e1_surface_*.json')):
+    m = os.path.basename(f)[len('e1_surface_'):-5]
+    cells_ = json.load(open(f))['cells']
+    sims = sorted({c['axes']['similarity'] for c in cells_.values()})
+    e2 = os.path.exists(f'{RESULTS_DIR}/e2_signatures_{m}.json')
+    ok = (len(cells_) == 200 and 'shell_share' in sims and e2)
+    bad += (not ok)
+    print(f'{m:24s} ncells={len(cells_):3d} e2={str(e2):5s} {"OK" if ok else "<-- fix in 06 first"}')
+if bad:
+    raise SystemExit('E1/E2 not clean for every model — re-run notebook 06 with OVERWRITE=True.')
+print('\nAll clean. Proceeding to E3.')
+"""))
     cells += _model_loop(
-        "5) E3 — causal patching", "",
+        "3) E3 — bidirectional causal patching",
+        "The heavy one. Self-patch must stay token-identical (the script ABORTS "
+        "otherwise). The 23 h guard stops before a model that can't finish; re-run "
+        "with `OVERWRITE=False` to resume the remaining models.",
         "['scripts/e3_causal.py', '--model', key]",
         first_est_h=6.0,
         skip_check="os.path.exists(f'{RESULTS_DIR}/e3_causal_{key}.json')",
         overwrite_default=True)
-    cells.append(md("## 6) E4 — family table + causal decision"))
+    cells.append(md("## 4) E4 — family table + authoritative causal decision"))
     cells.append(code("run(['scripts/e4_families.py', '--models'] + %s)" % json.dumps(MODELS)))
+    cells.append(md("## 5) Headline"))
+    cells.append(code(r"""
+import json, os, glob
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+for f in sorted(glob.glob(f'{RESULTS_DIR}/e2_signatures_*.json')):
+    if any(t in f for t in ('_wu','_ksens','_seed','_steps3')): continue
+    d = json.load(open(f)); m = os.path.basename(f)[len('e2_signatures_'):-5]
+    r = {k: round(v,3) for k,v in d['sample_level']['bucket_rates'].items() if v>0}
+    print(f'{m:24s} cells={len(d["cells_used"]):2d} pairs={d["pairs_used"]:4d}  {r}')
+print()
+e4 = json.load(open(f'{RESULTS_DIR}/e4_families.json'))
+print('causal effects (effect = BH-rejected AND margin met):')
+hit = False
+for k, per in e4.get('causal_decision', {}).items():
+    for mdl, dirs in per.items():
+        for d_, v in dirs.items():
+            if v.get('effect'):
+                hit = True; print(f'  k={k} {mdl} {d_}: EFFECT (p={v["p"]})')
+if not hit:
+    print('  none met the pre-registered criteria')
+"""))
     return notebook(cells)
 
 
@@ -566,7 +653,8 @@ def main():
         "03_e3_causal.ipynb": nb_e3(),
         "04_e4_e5_analysis.ipynb": nb_e4_e5(),
         "05_analyze_breaking_models.ipynb": nb_05_analyze_breaking(),
-        "06_shell_share_full_rerun.ipynb": nb_06_shell_share_rerun(),
+        "06_shell_share_e1_e2.ipynb": nb_06_shell_share_rerun(),
+        "07_e3_causal_e4_families.ipynb": nb_07_e3_e4(),
     }
     for name, nb in outputs.items():
         path = NB_DIR / name
