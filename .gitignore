@@ -7,6 +7,7 @@ __pycache__/
 .venv/
 venv/
 
+paper
 # Results are large and machine-produced. Only manifests + breaking-cell lists
 # and the small analysis JSONs are meant to be committed; everything else is
 # regenerated. See §3 of the task spec ("results/ gitignored except manifests").

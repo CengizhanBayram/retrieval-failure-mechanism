@@ -315,14 +315,16 @@ for key in %(models)s:
 # ---------------------------------------------------------------------------
 
 def _model_loop(title, subtitle, script_argv_tmpl, first_est_h, skip_check,
-                fresh_arg=None, overwrite_default=False) -> list[dict]:
+                fresh_arg=None, overwrite_default=False, models=None) -> list[dict]:
     """A resume-safe, 24 h-guarded model loop that shells out to a Part-3 script.
     ``skip_check`` is a python expression (given ``key``, ``RESULTS_DIR``) that is
     True when the model's output already exists. ``OVERWRITE`` in the generated
     cell recomputes + overwrites ALL models (ignore existing outputs);
     ``fresh_arg`` (e.g. '--fresh') is appended to the script call in that mode so
     it also ignores per-cell checkpoints (E1). ``overwrite_default`` sets the
-    cell's initial ``OVERWRITE`` value."""
+    cell's initial ``OVERWRITE`` value. ``models`` overrides the model list
+    (default: the full panel)."""
+    models = models if models is not None else MODELS
     fresh = json.dumps([fresh_arg] if fresh_arg else [])
     return [
         md(f"## {title}\n{subtitle}"),
@@ -354,7 +356,7 @@ for key in MODELS:
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-""" % {"models": json.dumps(MODELS), "skip": skip_check, "est": first_est_h,
+""" % {"models": json.dumps(models), "skip": skip_check, "est": first_est_h,
         "cap": HARD_CAP_H, "argv": script_argv_tmpl, "fresh": fresh,
         "ovr": "True" if overwrite_default else "False"}),
     ]
@@ -645,6 +647,73 @@ if not hit:
     return notebook(cells)
 
 
+# ---------------------------------------------------------------------------
+# 08 — E3 backfill for the models 07 couldn't finish in 24 h, then E4
+# ---------------------------------------------------------------------------
+
+# Edit this list to whichever models still have a stale/small-N E3 (compare each
+# e3_causal_{m}.json 'n_pairs' to e2_signatures_{m}.json 'pairs_used'; a mismatch
+# means E3 didn't finish for that model). From the clean shell_share run: gemma
+# and qwen-3b were the two that overran.
+E3_BACKFILL_MODELS = ["gemma2_9b_it", "qwen25_3b_instruct"]
+
+
+def nb_08_e3_backfill() -> dict:
+    cells = [md(
+        "# 08 · E3 backfill (models 07 couldn't finish) + E4\n"
+        "E3 over all 7 didn't fit in one 24 h session, so this notebook runs E3 for "
+        f"**just the leftover models** ({', '.join(E3_BACKFILL_MODELS)}) and then "
+        "re-runs **E4 over the full panel**.\n\n"
+        "Edit `MODELS` in the E3 cell if a different set is outstanding — a model's "
+        "E3 is stale when `e3_causal_{m}.json` `n_pairs` ≠ `e2_signatures_{m}.json` "
+        "`pairs_used`. `OVERWRITE=True` overwrites the stale small-N E3 files.")]
+    cells += setup_cells()
+    cells.append(md("## 1) Re-enable shell_share (E3 rebuilds probes from grid.yaml)"))
+    cells.append(SHELL_SHARE_CELL)
+    cells.append(md("## 2) Which models still need E3? (n_pairs mismatch = stale)"))
+    cells.append(code(r"""
+import json, os
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+for m in %(all)s:
+    try:
+        e2 = json.load(open(f'{RESULTS_DIR}/e2_signatures_{m}.json'))['pairs_used']
+    except Exception:
+        print(f'{m:24s} NO E2 — run 06 first'); continue
+    p = f'{RESULTS_DIR}/e3_causal_{m}.json'
+    if not os.path.exists(p):
+        print(f'{m:24s} E2_pairs={e2:4d}  E3 MISSING  <-- backfill'); continue
+    n3 = (json.load(open(p))['k'].get('10') or {}).get('n_pairs')
+    print(f'{m:24s} E2_pairs={e2:4d}  E3_n={n3}  {"STALE <-- backfill" if n3 != e2 else "ok"}')
+""" % {"all": json.dumps(MODELS)}))
+    cells += _model_loop(
+        "3) E3 — backfill the leftover models",
+        "Only the models listed here (edit `MODELS` if needed). `OVERWRITE=True` so "
+        "a stale small-N E3 file gets overwritten. The 23 h guard still protects the "
+        "session.",
+        "['scripts/e3_causal.py', '--model', key]",
+        first_est_h=6.0,
+        skip_check="os.path.exists(f'{RESULTS_DIR}/e3_causal_{key}.json')",
+        overwrite_default=True, models=E3_BACKFILL_MODELS)
+    cells.append(md("## 4) E4 over the FULL panel (now that every E3 is present)"))
+    cells.append(code("run(['scripts/e4_families.py', '--models'] + %s)" % json.dumps(MODELS)))
+    cells.append(md("## 5) Headline"))
+    cells.append(code(r"""
+import json, os, glob
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+e4 = json.load(open(f'{RESULTS_DIR}/e4_families.json'))
+print('causal effects (effect = BH-rejected AND margin met):')
+hit = False
+for k, per in e4.get('causal_decision', {}).items():
+    for mdl, dirs in per.items():
+        for d_, v in dirs.items():
+            if v.get('effect'):
+                hit = True; print(f'  k={k} {mdl:22s} {d_:6s} EFFECT (p={v["p"]})')
+if not hit:
+    print('  none met the pre-registered criteria')
+"""))
+    return notebook(cells)
+
+
 def main():
     outputs = {
         "00_setup_and_guardrails.ipynb": nb_00(),
@@ -655,6 +724,7 @@ def main():
         "05_analyze_breaking_models.ipynb": nb_05_analyze_breaking(),
         "06_shell_share_e1_e2.ipynb": nb_06_shell_share_rerun(),
         "07_e3_causal_e4_families.ipynb": nb_07_e3_e4(),
+        "08_e3_backfill_e4.ipynb": nb_08_e3_backfill(),
     }
     for name, nb in outputs.items():
         path = NB_DIR / name
