@@ -46,8 +46,9 @@ class _OProjPatcher:
             self.by_layer.setdefault(l, []).append(h)
         self.head_dim = panel.head_dim(model)
         # runtime state
-        self.active = False            # patch on this forward?
-        self.capture = False           # capture donor on this forward?
+        self.capture = False           # capture donor z at the answer step?
+        self.patch_enabled = False     # overwrite z with the donor?
+        self.patch_mode = "first_step" # "first_step" | "sustained"
         self.donor: dict[tuple[int, int], object] = {}   # (l,h) -> tensor [head_dim]
         self.captured: dict[tuple[int, int], object] = {}
         self._handles = []
@@ -59,11 +60,14 @@ class _OProjPatcher:
             def make(idx):
                 def pre_hook(_m, args):
                     x = args[0]
-                    if self.capture:
+                    # The ANSWER step is the last position of the PROMPT forward
+                    # (seq_len > 1). Incremental generation steps have seq_len == 1.
+                    is_prompt_forward = x.shape[1] > 1
+                    if self.capture and is_prompt_forward:
                         for h in self.by_layer[idx]:
                             sl = x[:, -1, h * self.head_dim:(h + 1) * self.head_dim]
                             self.captured[(idx, h)] = sl[0].detach().clone()
-                    if self.active:
+                    if self.patch_enabled and (self.patch_mode == "sustained" or is_prompt_forward):
                         x = x.clone()
                         for h in self.by_layer[idx]:
                             dv = self.donor.get((idx, h))
@@ -83,52 +87,17 @@ class _OProjPatcher:
         self._handles.clear()
 
 
-def _newline_token_ids(tokenizer) -> set[int]:
-    ids: set[int] = set()
-    for probe in ("\n", " \n", "\n\n"):
-        for t in tokenizer(probe, add_special_tokens=False)["input_ids"]:
-            ids.add(int(t))
-    return ids
-
-
-def _greedy_loop(model, tokenizer, input_ids, decoding_cfg, controller, patch_mode):
-    """Deterministic greedy generation (§1.4) with a step-scoped patch."""
-    import torch
-    device = next(model.parameters()).device
-    max_new = int(decoding_cfg["decoding"]["max_new_tokens"])
-    stop_nl = bool(decoding_cfg["decoding"].get("stop_on_newline", True))
-    newline_ids = _newline_token_ids(tokenizer) if stop_nl else set()
-    eos = int(tokenizer.eos_token_id) if tokenizer.eos_token_id is not None else None
-
-    prompt_len = len(input_ids)
-    cur = torch.tensor([list(input_ids)], device=device, dtype=torch.long)
-    past = None
-    generated: list[int] = []
-    with torch.no_grad():
-        for step in range(max_new):
-            if controller is not None:
-                controller.active = (patch_mode == "sustained") or (step == 0)
-            seq_from = 0 if step == 0 else prompt_len + step - 1
-            position_ids = torch.arange(
-                seq_from, seq_from + cur.shape[1], device=device
-            ).unsqueeze(0)
-            out = model(input_ids=cur, position_ids=position_ids,
-                        past_key_values=past, use_cache=True)
-            past = out.past_key_values
-            nxt = int(torch.argmax(out.logits[0, -1, :]).item())
-            generated.append(nxt)
-            if eos is not None and nxt == eos:
-                break
-            if nxt in newline_ids:
-                break
-            cur = torch.tensor([[nxt]], device=device, dtype=torch.long)
-    text = tokenizer.decode(generated, skip_special_tokens=True)
-    return Generation(token_ids=generated, text=text)
+def _generate_hf(model, tokenizer, input_ids, decoding_cfg) -> "Generation":
+    """One-prompt greedy generation via ``model.generate`` (robust cache handling
+    for every architecture, incl. Gemma-2's fixed-size HybridCache near its max
+    position — which the old manual token loop mishandled). Any active o_proj
+    hook fires during generate, so it works for both plain and patched runs."""
+    return generate_plain_batch(model, tokenizer, [list(input_ids)], decoding_cfg)[0]
 
 
 def generate_plain(model, tokenizer, input_ids, decoding_cfg) -> Generation:
     """No-patch greedy generation (flip base rate / self-patch reference)."""
-    return _greedy_loop(model, tokenizer, input_ids, decoding_cfg, None, "first_step")
+    return _generate_hf(model, tokenizer, input_ids, decoding_cfg)
 
 
 def _oom_error_types():
@@ -233,23 +202,20 @@ def generate_plain_batch(model, tokenizer, input_ids_list, decoding_cfg) -> list
     return results
 
 
-def capture_donor_z(model, input_ids, heads, *, answer_steps: int = 1) -> dict:
-    """Capture donor z_h at generation step 1 (per head) for ``heads``.
+def capture_donor_z(model, tokenizer, input_ids, heads, decoding_cfg,
+                    *, answer_steps: int = 1) -> dict:
+    """Capture donor z_h at the answer step (per head) for ``heads``.
 
-    Returns ``{(layer, head): np.ndarray[head_dim] float32}``. (Only step-1
-    vectors for the headline; sustained donors reuse the step-1 vector where a
-    later step is unavailable, per §4.4.)
+    Captured during the SAME ``model.generate`` prompt forward that
+    ``generate_with_patch`` patches, so the donor value matches exactly and
+    self-patch stays bitwise-identical. Returns ``{(layer, head):
+    np.ndarray[head_dim] float32}``.
     """
-    import torch
-    device = next(model.parameters()).device
-    ids = torch.tensor([list(input_ids)], device=device, dtype=torch.long)
     ctrl = _OProjPatcher(model, heads)
     with ctrl:
         ctrl.capture = True
-        ctrl.active = False
-        position_ids = torch.arange(0, ids.shape[1], device=device).unsqueeze(0)
-        with torch.no_grad():
-            model(input_ids=ids, position_ids=position_ids, use_cache=True)
+        ctrl.patch_enabled = False
+        _generate_hf(model, tokenizer, input_ids, decoding_cfg)  # prompt forward captures step-0 z
     return {lh: v.float().cpu().numpy() for lh, v in ctrl.captured.items()}
 
 
@@ -266,7 +232,9 @@ def generate_with_patch(
             ctrl.donor[(l, h)] = torch.as_tensor(np.asarray(v))
     with ctrl:
         ctrl.capture = False
-        return _greedy_loop(model, tokenizer, input_ids, decoding_cfg, ctrl, patch_mode)
+        ctrl.patch_enabled = True
+        ctrl.patch_mode = patch_mode
+        return _generate_hf(model, tokenizer, input_ids, decoding_cfg)
 
 
 def self_patch_generate(model, tokenizer, input_ids, heads, decoding_cfg,
@@ -274,7 +242,7 @@ def self_patch_generate(model, tokenizer, input_ids, heads, decoding_cfg,
     """Self-patch: patch the recipient with ITS OWN z. Returns (plain, patched).
     The two MUST be token-identical (§4.4); callers assert it and abort on
     failure."""
-    donor = capture_donor_z(model, input_ids, heads)
+    donor = capture_donor_z(model, tokenizer, input_ids, heads, decoding_cfg)
     plain = generate_plain(model, tokenizer, input_ids, decoding_cfg)
     patched = generate_with_patch(model, tokenizer, input_ids, heads, donor,
                                   decoding_cfg, patch_mode=patch_mode)

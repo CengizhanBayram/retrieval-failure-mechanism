@@ -94,7 +94,7 @@ def _self_patch_check(model, tokenizer, cell_pairs, heads, decoding_cfg, patch_m
         if not pairs:
             continue
         _sp, fp = pairs[0]
-        donor_self = patching.capture_donor_z(model, fp.input_ids, heads)
+        donor_self = patching.capture_donor_z(model, tokenizer, fp.input_ids, heads, decoding_cfg)
         plain = patching.generate_plain(model, tokenizer, fp.input_ids, decoding_cfg)
         patched = patching.generate_with_patch(model, tokenizer, fp.input_ids, heads,
                                                donor_self, decoding_cfg, patch_mode=patch_mode)
@@ -185,8 +185,8 @@ def main(argv=None):
                 base_fp = baselines[id(fp)]["base"]   # repair recipient baseline
                 base_sp = baselines[id(sp)]["base"]   # break  recipient baseline
 
-                donor_success = patching.capture_donor_z(model, sp.input_ids, heads)
-                donor_failure = patching.capture_donor_z(model, fp.input_ids, heads)
+                donor_success = patching.capture_donor_z(model, tokenizer, sp.input_ids, heads, decoding_cfg)
+                donor_failure = patching.capture_donor_z(model, tokenizer, fp.input_ids, heads, decoding_cfg)
                 rep_correct = _grade_patched(model, tokenizer, fp, heads, donor_success,
                                              decoding_cfg, patch_mode)
                 brk_correct = _grade_patched(model, tokenizer, sp, heads, donor_failure,
@@ -205,10 +205,10 @@ def main(argv=None):
                 rheads_r = _random_heads(det, k, rseed_r)
                 rheads_b = _random_heads(det, k, rseed_b)
                 cr = _grade_patched(model, tokenizer, fp, rheads_r,
-                                    patching.capture_donor_z(model, sp.input_ids, rheads_r),
+                                    patching.capture_donor_z(model, tokenizer, sp.input_ids, rheads_r, decoding_cfg),
                                     decoding_cfg, patch_mode)
                 cb = _grade_patched(model, tokenizer, sp, rheads_b,
-                                    patching.capture_donor_z(model, fp.input_ids, rheads_b),
+                                    patching.capture_donor_z(model, tokenizer, fp.input_ids, rheads_b, decoding_cfg),
                                     decoding_cfg, patch_mode)
                 ind["ctrl_repair"].append(int((not base_fp) and cr))
                 ind["ctrl_break"].append(int(base_sp and (not cb)))
