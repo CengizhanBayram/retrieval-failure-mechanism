@@ -5,7 +5,22 @@
 # ===========================================================================
 e3:
   # Head-set sizes to patch (top-k from the detection artifact, §4.4).
-  k_list: [1, 5, 10]
+  #
+  # PRE-REGISTERED primary sweep: k in {1, 5, 10}.
+  #
+  # k = 20, 30 are an EXPLORATORY, POST-HOC extension (amendment 2026-07-13). They
+  # were added AFTER seeing that the break-flip curves had not saturated at k=10:
+  # still climbing for qwen3b/phi/olmo, flat for llama/mistral — which leaves
+  # "llama/mistral have no causal effect" confounded with "we patched only 10 of
+  # their 39/82 retrieval heads". The extension distinguishes:
+  #   curve keeps rising  -> the null was a k-ceiling artifact (REDUNDANCY)
+  #   curve stays flat    -> a genuine mechanism-vs-causality DISSOCIATION
+  # It also covers gemma2's 13-way score tie at 1.000, which made its k=10 head set
+  # (and therefore its k=10 null) arbitrary — see detect.boundary_tie.
+  #
+  # ANY result at k in {20, 30} is reported as EXPLORATORY, never as confirmatory.
+  # Feasible panel-wide: the smallest detected head-set is 30 (qwen25_3b).
+  k_list: [1, 5, 10, 20, 30]
 
   # first_step  = patch z_h at generation step 1 only (headline).
   # sustained   = patch every generated step (E5 material, not headline).

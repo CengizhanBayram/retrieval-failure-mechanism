@@ -15,6 +15,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import copy
 import logging
 import sys
 from pathlib import Path
@@ -76,8 +77,19 @@ def main(argv=None):
                     help="override sample_level_k_heads (E5 sensitivity)")
     ap.add_argument("--seed", type=int, default=None,
                     help="override probe seed (E5 headline repeats)")
+    ap.add_argument("--m2-min-distractor-mass", type=float, default=None,
+                    help="override signature_rules.m2_capture.min_distractor_mass "
+                         "(E5 THRESHOLD SENSITIVITY ONLY). Requires --tag: the "
+                         "pre-registered floor defines the primary analysis and an "
+                         "override must never overwrite the primary artifact.")
     ap.add_argument("--tag", default=None, help="output filename suffix for variants")
     args = ap.parse_args(argv)
+    if args.m2_min_distractor_mass is not None and not args.tag:
+        raise SystemExit(
+            "--m2-min-distractor-mass requires --tag. Changing the M2 floor after "
+            "seeing the results and overwriting the primary artifact would be HARKing; "
+            "an alternative floor is reportable only as a tagged sensitivity variant "
+            "alongside the pre-registered one.")
 
     grid_cfg = C.load_yaml(C.config_path("grid.yaml"))
     decoding_cfg = C.load_yaml(C.config_path("decoding.yaml"))
@@ -89,6 +101,14 @@ def main(argv=None):
     pair_min = int(PR.get(prereg, "sampling.pair_min_per_cell"))
     rules = PR.get(prereg, "signature_rules")
     ref_dist = PR.get(prereg, "signature_rules.reference_distribution")
+    m2_floor_override = args.m2_min_distractor_mass
+    if m2_floor_override is not None:
+        rules = copy.deepcopy(rules)
+        rules["m2_capture"]["min_distractor_mass"] = float(m2_floor_override)
+        log.warning("M2 floor OVERRIDDEN to %.3f (pre-registered: %.3f) -- sensitivity "
+                    "variant '%s', NOT the primary analysis.", m2_floor_override,
+                    float(PR.get(prereg, "signature_rules.m2_capture.min_distractor_mass")),
+                    args.tag)
     seed = args.seed if args.seed is not None else int(PR.get(prereg, "seeds.e1_surface"))
     stat_ci = float(PR.get(prereg, "statistics.ci"))
     alpha = float(PR.get(prereg, "causal_criteria.alpha"))
@@ -129,6 +149,13 @@ def main(argv=None):
     # m1_silence -> what was the distractor_mass?).
     failure_sample_masses: list = []
     cells_used, pairs_used = [], 0
+    # The EXACT matched pairs E2 measured the mechanism on, recorded as sample
+    # indices so E3 measures causality on the SAME sample instead of re-deriving
+    # it. Re-derivation is not reproducible: the grading pass batches through
+    # _generate_batch_adaptive, which halves the batch on OOM, and a different
+    # batch composition changes the left-padding -> greedy tokens can flip at the
+    # margin. That is how E2 (614 pairs) and E3 (625 pairs) drifted apart.
+    pairs_by_cell: dict = {}
 
     for h in breaking:
         rec = surface.get(h)
@@ -159,6 +186,8 @@ def main(argv=None):
             continue
         cells_used.append(h)
         succ_sorted, fail_sorted = sorted(succ), sorted(fail)
+        pairs_by_cell[h] = [[int(si), int(fi)] for si, fi
+                            in zip(succ_sorted[:n_pairs], fail_sorted[:n_pairs])]
 
         # Capture masses ONLY for the samples actually used: every success (for
         # the reference distribution) + the paired failures.
@@ -253,6 +282,8 @@ def main(argv=None):
         extra={"detection_seed": det.seed, "detection_artifact": det.path,
                "k_heads": k_heads, "answer_steps": args.answer_steps,
                "detector": detector, "seed_override": args.seed,
+               "m2_min_distractor_mass_override": m2_floor_override,
+               "is_primary_analysis": m2_floor_override is None and args.tag is None,
                "effective_attn": mcfg.get("effective_attn")},
     )
     out = {
@@ -267,6 +298,9 @@ def main(argv=None):
         "failure_sample_masses": failure_sample_masses,
         "pairs_used": pairs_used,
         "cells_used": cells_used,
+        # Consumed by E3 (see _pairs_from_e2): causality is measured on exactly
+        # the pairs the mechanism was measured on.
+        "pairs_by_cell": pairs_by_cell,
     }
     suffix = f"_{args.tag}" if args.tag else ""
     C.write_json(results_dir / f"e2_signatures_{args.model}{suffix}.json", out)

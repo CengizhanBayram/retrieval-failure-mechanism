@@ -50,23 +50,26 @@ def _cellspec(ax: dict, rec: dict | None = None) -> CellSpec:
                     int(ax["n_distractors"]), ax["similarity"])
 
 
-def _pairs_for_cell(model, tokenizer, factory, cell, n, seed, decoding_cfg, pair_min):
-    """Reconstruct matched (success_idx, failure_idx) pairs deterministically.
+def _pairs_from_e2(e2: dict, factory, cell, h: str, seed: int):
+    """READ the matched (success, failure) pairs E2 measured the mechanism on.
 
-    The grading pass is BATCHED (no hooks); pairing then zips the two classes.
-    Returns a list of (success_probe, failure_probe) tuples."""
-    probes = [factory.build(cell, i, seed) for i in range(n)]
-    gens = patching.generate_plain_batch(
-        model, tokenizer, [p.input_ids for p in probes], decoding_cfg)
-    succ, fail = [], []
-    for i, (p, g) in enumerate(zip(probes, gens)):
-        (succ if grading.grade_generation(g.text, p.needle_value, p.distractor_values).correct
-         else fail).append(i)
-    n_pairs = min(len(succ), len(fail))
-    if n_pairs < pair_min:
-        return []
-    return [(probes[s], probes[f])
-            for s, f in zip(sorted(succ)[:n_pairs], sorted(fail)[:n_pairs])]
+    E3 must NOT re-derive the pairs by re-grading. Grading batches through
+    ``_generate_batch_adaptive``, which halves the batch on OOM; a different
+    batch composition changes the left-padding, and the greedy token can flip at
+    the margin. Re-deriving therefore silently drifts (in the pilot: E2 measured
+    614 pairs, E3 re-derived 625) and mechanism and causality end up measured on
+    different samples. Probes are pure functions of (cell, sample_idx, seed), so
+    the recorded indices rebuild the identical prompts.
+    """
+    pairs = e2.get("pairs_by_cell")
+    if pairs is None:
+        raise SystemExit(
+            "E2 output has no 'pairs_by_cell'. It predates the pair-set fix, so E3 "
+            "would have to re-derive the pairs and would not be measuring causality "
+            "on the same sample as the mechanism. Re-run E2 (same config, same "
+            "pre-registration) to record its pair list, then re-run E3.")
+    return [(factory.build(cell, int(si), seed), factory.build(cell, int(fi), seed))
+            for si, fi in pairs.get(h, [])]
 
 
 def _grade_plain(model, tokenizer, probe, decoding_cfg) -> bool:
@@ -118,7 +121,8 @@ def main(argv=None):
     e3_cfg = C.load_yaml(C.config_path("e3.yaml"))["e3"]
 
     prereg = PR.load_prereg(args.prereg)
-    pair_min = int(PR.get(prereg, "sampling.pair_min_per_cell"))
+    # NOTE: pair_min is NOT re-applied here. E2 already enforced it when it built
+    # (and recorded) the pair list; E3 consumes that list verbatim.
     seed = int(PR.get(prereg, "seeds.e1_surface"))
     margin_pp = float(PR.get(prereg, "causal_criteria.flip_margin_over_control_pp"))
     alpha = float(PR.get(prereg, "causal_criteria.alpha"))
@@ -132,7 +136,8 @@ def main(argv=None):
     e2_path = results_dir / f"e2_signatures_{args.model}.json"
     if not e2_path.exists():
         raise SystemExit(f"E3 needs E2 output {e2_path}. Run E2 first.")
-    cells_used = C.load_yaml(e2_path)["cells_used"]
+    e2 = C.load_yaml(e2_path)
+    cells_used = e2["cells_used"]
     surface = C.load_yaml(results_dir / f"e1_surface_{args.model}.json")["cells"]
 
     panel_reg = P.load_panel(paths_cfg)
@@ -149,6 +154,23 @@ def main(argv=None):
     max_k = max(k_list)
     heads_max = det.top_k_heads(max_k, detector="argmax")
 
+    # ---- Head-set determinacy diagnostic (recorded, not acted on) ------------
+    # The detector score saturates at 1.0. Where the top-k cut splits a block of
+    # tied heads, the patched set is chosen by sort order rather than by
+    # evidence, and a NULL result at that k is confounded with WHICH tied heads
+    # happened to be inside. Recorded per k so the reader can see it; the code
+    # branches on nothing (§12).
+    head_set_ties = {str(k): det.boundary_tie(k, detector="argmax") for k in k_list}
+    for k, bt in head_set_ties.items():
+        if bt["arbitrary"]:
+            log.warning(
+                "k=%s head set is TIE-BROKEN: %d heads share the cut score %.3f, "
+                "%d are inside the set and %d are excluded by (layer,head) sort order "
+                "alone. A null causal result at this k is NOT interpretable as "
+                "'these heads are not causal'.",
+                k, bt["n_tied_at_cut"], bt["cut_score"],
+                bt["n_tied_inside_k"], bt["n_tied_excluded"])
+
     # ---- Precompute pairs + unpadded baselines ONCE (independent of k) -------
     # Pairs depend only on (cell, seed); baselines and the no-patch rerun depend
     # only on the recipient prompt. Computing them once avoids re-deriving them
@@ -157,8 +179,7 @@ def main(argv=None):
     baselines: dict = {}   # id(probe) -> {"base": bool, "rerun": bool}
     for h in cells_used:
         cell = _cellspec(surface[h]["axes"], surface[h])
-        n = int(surface[h]["n_total"])
-        pairs = _pairs_for_cell(model, tokenizer, factory, cell, n, seed, decoding_cfg, pair_min)
+        pairs = _pairs_from_e2(e2, factory, cell, h, seed)
         cell_pairs[h] = pairs
         for (sp, fp) in pairs:
             for probe in (sp, fp):
@@ -166,6 +187,16 @@ def main(argv=None):
                     base = _grade_plain(model, tokenizer, probe, decoding_cfg)
                     rerun = _grade_plain(model, tokenizer, probe, decoding_cfg)  # no-patch rerun
                     baselines[id(probe)] = {"base": base, "rerun": rerun}
+
+    # Mechanism (E2) and causality (E3) must be measured on the SAME sample.
+    # Fail loudly rather than report a causal claim over a different pair set.
+    n_pairs_e3 = sum(len(p) for p in cell_pairs.values())
+    n_pairs_e2 = int(e2["pairs_used"])
+    if n_pairs_e3 != n_pairs_e2:
+        raise SystemExit(
+            f"pair-set mismatch: E2 measured {n_pairs_e2} pairs, E3 loaded {n_pairs_e3}. "
+            "E2's recorded pair list is the single source of truth; do not proceed.")
+    log.info("pair set: %d pairs read from E2 (matches E2's pairs_used).", n_pairs_e3)
 
     # ---- Self-patch smoke check ONCE per model (§4.4), abort on mismatch -----
     self_patch_ok = _self_patch_check(model, tokenizer, cell_pairs, heads_max,
@@ -227,9 +258,11 @@ def main(argv=None):
                       C.config_path("paths.yaml"), PR.resolve_prereg_path(args.prereg)],
         model_key=args.model, model_sha=mcfg["revision"], seeds=seed,
         extra={"detection_seed": det.seed, "patch_mode": patch_mode,
+               "pairs_source": "e2.pairs_by_cell", "n_pairs": n_pairs_e3,
                "note": "authoritative BH across 4 models x 2 directions is finalized in E4"})
     C.write_json(results_dir / f"e3_causal_{args.model}.json",
-                 {"provenance": provenance, "k": out_by_k})
+                 {"provenance": provenance, "k": out_by_k,
+                  "head_set_ties": head_set_ties})
     log.info("E3 done for %s (k_list=%s).", args.model, k_list)
     return 0
 

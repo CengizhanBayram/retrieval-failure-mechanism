@@ -60,6 +60,42 @@ class Detection:
             )
         return ranked[:k]
 
+    def boundary_tie(self, k: int, detector: str = "argmax") -> dict:
+        """Diagnose whether the top-k CUT lands inside a block of tied scores.
+
+        The detector score saturates at 1.0, so several heads can share the top
+        score exactly. When that happens the top-k set is not selected by
+        evidence — it is selected by the (layer, head) tie-break, i.e. by sort
+        order. Any causal claim over such a set (in particular a NULL: "patching
+        the top-k heads did nothing") is confounded with the arbitrariness of
+        WHICH tied heads got patched.
+
+        Observed in the pilot: gemma2_9b has 13 heads at exactly 1.000, so its
+        top-10 set is 10 arbitrary members of a 13-way tie.
+
+        Returns the score at the cut, how many heads tie it, and how many of
+        those made it in — ``arbitrary`` is True when the cut splits a tie.
+        """
+        scores = self.argmax_scores if detector == "argmax" else self.copy_scores
+        ranked = self._ranked(detector)
+        if k > len(ranked) or k < 1:
+            raise DetectionError(f"boundary_tie: k={k} outside 1..{len(ranked)}.")
+        val = [float(scores[l, h]) for (l, h) in ranked]
+        cut = val[k - 1]
+        tied = [i for i, v in enumerate(val) if abs(v - cut) < 1e-9]
+        n_in = sum(1 for i in tied if i < k)
+        return {
+            "k": k,
+            "detector": detector,
+            "cut_score": cut,
+            "n_tied_at_cut": len(tied),
+            "n_tied_inside_k": n_in,
+            "n_tied_excluded": len(tied) - n_in,
+            # True <=> the cut splits a tie: some heads with the SAME score are in
+            # and some are out, decided only by sort order.
+            "arbitrary": len(tied) > n_in,
+        }
+
     def retrieval_head_set(self, detector: str = "argmax") -> set[tuple[int, int]]:
         heads = self.argmax_heads if detector == "argmax" else self.copy_heads
         return {(int(l), int(h)) for (l, h) in heads}

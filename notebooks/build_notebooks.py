@@ -285,6 +285,8 @@ def manual_row(model, ids, l, h):
                                  len(ids) - 1, nH, nKV, P.attention_scale(model),
                                  P.attn_logit_softcap(model))
 
+GATE_TOL = 1e-3
+gate = {}
 for key in %(models)s:
     try:
         # fp32 for the math gate (bf16 rounding would mask correctness at ~e-3).
@@ -293,19 +295,47 @@ for key in %(models)s:
         ids = tok(TEXT, add_special_tokens=True)['input_ids']
         det = detect.load_detection(P.detection_dir(paths), P.resolve_model_key(paths, key),
                                     int(paths['detection_artifacts']['seed']))
-        worst = 0.0
+        worst, per_head = 0.0, []
         for (l, h) in det.top_k_heads(3, detector='argmax'):
             ref = CAP.eager_reference_row(model, ids, l, h)
-            worst = max(worst, float(np.max(np.abs(manual_row(model, ids, l, h) - ref))))
-        status = 'PASS' if worst < 1e-3 else 'FAIL  <-- investigate before trusting capture'
+            d = float(np.max(np.abs(manual_row(model, ids, l, h) - ref)))
+            per_head.append({'layer': int(l), 'head': int(h), 'max_abs_diff': d})
+            worst = max(worst, d)
+        status = 'PASS' if worst < GATE_TOL else 'FAIL  <-- investigate before trusting capture'
+        gate[key] = {'effective_attn': mcfg['effective_attn'], 'dtype': 'float32',
+                     'max_abs_diff': worst, 'tolerance': GATE_TOL,
+                     'passed': bool(worst < GATE_TOL), 'per_head': per_head,
+                     'model_sha': mcfg.get('revision')}
         print(f'{key:22s} eff_attn={mcfg["effective_attn"]:6s} max|manual-eager|={worst:.2e}  {status}')
         del model
     except Exception as e:
+        gate[key] = {'error': f'{type(e).__name__}: {str(e)[:200]}', 'passed': False}
         print(f'{key:22s} SKIPPED/ERROR: {type(e).__name__}: {str(e)[:120]}')
     finally:
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+
+# PERSIST the gate. A capture-correctness claim that lives only in a notebook's
+# stdout is not auditable: it dies with the Colab session. This artifact is the
+# evidence that every downstream mass number is trustworthy.
+import json as _json, subprocess, datetime
+prov = {
+    'script': 'notebooks/00_A100_setup_and_guardrails.ipynb',
+    'git_commit': subprocess.run(['git', 'rev-parse', 'HEAD'], cwd='/content/rope-part3',
+                                 capture_output=True, text=True).stdout.strip(),
+    'timestamp_utc': datetime.datetime.utcnow().isoformat() + 'Z',
+    'tolerance': GATE_TOL,
+    'dtype': 'float32',
+    'definition': 'max |manual attention row - eager output_attentions row| over the '
+                  'top-3 argmax heads, last prompt position',
+}
+n_pass = sum(1 for v in gate.values() if v.get('passed'))
+C.write_json(f'{RESULTS_DIR}/gate_eager_reference.json',
+             {'provenance': prov, 'n_pass': n_pass, 'n_models': len(gate), 'models': gate})
+print(f'\nwrote {RESULTS_DIR}/gate_eager_reference.json  ({n_pass}/{len(gate)} PASS)')
+if n_pass < len(gate):
+    print('*** GATE NOT CLEAN — do not trust capture numbers until every model passes. ***')
 """ % {"models": json.dumps(MODELS)}))
     return notebook(cells)
 
@@ -714,18 +744,290 @@ if not hit:
     return notebook(cells)
 
 
+# ---------------------------------------------------------------------------
+# 09 — E2 re-run that RECORDS its pair list (prerequisite for any new E3)
+# ---------------------------------------------------------------------------
+
+def nb_09_e2_pairs() -> dict:
+    cells = [md(
+        "# 09 · E2 re-run — record the pair list  ·  **needs A100**\n"
+        "**Not a re-analysis. The pre-registration is untouched** (M2 floor stays at "
+        "the registered 0.10). This run is byte-identical in configuration to the one "
+        "that produced the current E2 artifacts; the only difference is that it now "
+        "*writes down* which matched pairs it measured (`pairs_by_cell`).\n\n"
+        "**Why it is needed.** E3 used to re-derive the pairs by re-grading. Grading "
+        "batches through `_generate_batch_adaptive`, which halves the batch on OOM — a "
+        "different batch composition changes the left-padding, and a greedy token can "
+        "flip at the margin. So E2 measured the mechanism on **614** pairs while E3 "
+        "measured causality on **625**. Mechanism and causality must be measured on "
+        "the *same* sample. E3 now READS this list and aborts if it is missing.\n\n"
+        "**Read the reproduction check in step 3.** The re-run should reproduce the "
+        "old bucket rates exactly. If it does not, E2 is not reproducible run-to-run "
+        "(the adaptive-batching path is the suspect) — that is a finding in itself, "
+        "and it must be resolved before anything is called confirmatory.")]
+    cells += setup_cells()
+    cells.append(md("## 1) Snapshot the current E2 numbers, so the re-run can be checked against them"))
+    cells.append(code(r"""
+import json, os, glob, shutil
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+BEFORE = {}
+for f in sorted(glob.glob(f'{RESULTS_DIR}/e2_signatures_*.json')):
+    if any(t in f for t in ('_wu','_ksens','_seed','_steps3','_m2sens')): continue
+    m = os.path.basename(f)[len('e2_signatures_'):-5]
+    d = json.load(open(f))
+    BEFORE[m] = {'pairs_used': d['pairs_used'],
+                 'bucket_rates': d['sample_level']['bucket_rates'],
+                 'has_pairs': 'pairs_by_cell' in d}
+    shutil.copy(f, f + '.pre_pairfix')      # keep the old artifact for the diff
+for m, v in BEFORE.items():
+    print(f'{m:22s} pairs={v["pairs_used"]:4d}  pairs_by_cell_recorded={v["has_pairs"]}')
+print('\nold artifacts backed up as *.pre_pairfix')
+"""))
+    cells.append(md("## 2) shell_share must match the grid the current results used"))
+    cells.append(SHELL_SHARE_CELL)
+    cells += _model_loop(
+        "3) E2 — same config, now recording pairs_by_cell",
+        "Identical pre-registration; the M2 floor is NOT changed here.",
+        "['scripts/e2_signatures.py', '--model', key]",
+        first_est_h=4.0,
+        skip_check="os.path.exists(f'{RESULTS_DIR}/e2_signatures_{key}.json')",
+        overwrite_default=True)
+    cells.append(md(
+        "## 4) Reproduction check — did the identical re-run give the identical numbers?"))
+    cells.append(code(r"""
+import json, os
+print(f'{"model":22s} {"pairs before/after":20s} {"bucket rates":14s} verdict')
+drift = []
+for m, old in BEFORE.items():
+    p = f'{RESULTS_DIR}/e2_signatures_{m}.json'
+    if not os.path.exists(p):
+        print(f'{m:22s} (not re-run)'); continue
+    new = json.load(open(p))
+    same_pairs = new['pairs_used'] == old['pairs_used']
+    nb, ob = new['sample_level']['bucket_rates'], old['bucket_rates']
+    same_rates = all(abs(nb.get(k,0)-ob.get(k,0)) < 1e-9 for k in set(nb)|set(ob))
+    ok = same_pairs and same_rates
+    if not ok: drift.append(m)
+    print(f'{m:22s} {old["pairs_used"]:>8d} -> {new["pairs_used"]:<8d} '
+          f'{"identical" if same_rates else "CHANGED":14s} '
+          f'{"reproduced" if ok else "*** DRIFT ***"}')
+print()
+if drift:
+    print('*** E2 did NOT reproduce for:', drift)
+    print('*** The pipeline is not deterministic run-to-run. Do not treat any of this')
+    print('*** as confirmatory until the source of the drift is found.')
+else:
+    print('E2 reproduced exactly. The recorded pair list is now the single source of')
+    print('truth, and E3 will measure causality on exactly these pairs.')
+"""))
+    return notebook(cells)
+
+
+# ---------------------------------------------------------------------------
+# 10 — EXPLORATORY extended k-sweep (redundancy vs dissociation) + E4
+# ---------------------------------------------------------------------------
+
+def nb_10_ksweep() -> dict:
+    cells = [md(
+        "# 10 · Extended k-sweep — **EXPLORATORY**  ·  needs A100\n"
+        "> ### Status: post-hoc, result-driven extension. NOT pre-registered.\n"
+        "> The pre-registered primary sweep is **k ∈ {1, 5, 10}**. k ∈ {20, 30} was "
+        "added *after* seeing that the curves had not saturated. Whatever comes out — "
+        "redundancy or dissociation — it is reported as **exploratory** in the paper, "
+        "with this notebook and the dated amendment commit as its provenance. Labelling "
+        "it honestly does not weaken the claim; it is what makes the claim usable.\n\n"
+        "**What it resolves.** At k ≤ 10 the break-flip curve was still climbing for "
+        "qwen3b (0.50), phi (0.39), olmo (0.22) but flat for llama (0.07) and mistral "
+        "(0.05). \"llama/mistral have no causal effect\" is not defensible from curves "
+        "cut at k=10: mistral has **82** retrieval heads and we patched 10 of them. "
+        "That is an under-dosed drug, not a null.\n\n"
+        "* curve keeps rising → the null was a **k-ceiling artifact (redundancy)**;\n"
+        "* curve stays flat while others saturate → a **genuine dissociation**.\n\n"
+        "**Also watch the tie diagnostic.** gemma2 has 13 heads tied at score 1.000, so "
+        "its k=10 set was 10 arbitrary members of a 13-way tie — its k=10 null was never "
+        "interpretable. k=20/30 covers the whole tied block.\n\n"
+        "**Prerequisite: notebook 09.** E3 reads E2's recorded pair list and will abort "
+        "without it.")]
+    cells += setup_cells()
+    cells.append(md("## 1) shell_share must match the grid E1/E2 used (E3 rebuilds probes)"))
+    cells.append(SHELL_SHARE_CELL)
+    cells.append(md("## 2) Preconditions: extended k_list live, and E2 recorded its pairs"))
+    cells.append(code(r"""
+import yaml, json, os, glob
+k = yaml.safe_load(open('/content/rope-part3/configs/e3.yaml'))['e3']['k_list']
+print('e3.k_list =', k)
+assert 20 in k and 30 in k, 'pull the latest configs/e3.yaml (k_list must include 20, 30)'
+
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+missing = []
+for f in sorted(glob.glob(f'{RESULTS_DIR}/e2_signatures_*.json')):
+    if any(t in f for t in ('_wu','_ksens','_seed','_steps3','_m2sens')): continue
+    if 'pairs_by_cell' not in json.load(open(f)):
+        missing.append(os.path.basename(f))
+if missing:
+    raise SystemExit('These E2 artifacts predate the pair-set fix: %s\n'
+                     'Run notebook 09 first — otherwise E3 would measure causality on a '
+                     'different sample than E2 measured the mechanism on.' % missing)
+print('OK — extended sweep active, and every E2 artifact carries its pair list.')
+"""))
+    cells += _model_loop(
+        "3) E3 — extended k-sweep (exploratory)",
+        "Recomputes E3 across k = 1,5,10,20,30, on E2's recorded pairs.",
+        "['scripts/e3_causal.py', '--model', key]",
+        first_est_h=8.0,
+        skip_check="os.path.exists(f'{RESULTS_DIR}/e3_causal_{key}.json')",
+        overwrite_default=True)
+    cells.append(md("## 4) E4 — family table + causal decision"))
+    cells.append(code("run(['scripts/e4_families.py', '--models'] + %s)" % json.dumps(MODELS)))
+    cells.append(md("## 5) The saturation curves, with the head-set tie flag"))
+    cells.append(code(r"""
+import json, os
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+KS = ['1','5','10','20','30']
+print(f'{"model":22s} ' + ' '.join(f'k={k:<5s}' for k in KS) + ' tie-broken k  trend')
+for m in %(models)s:
+    p = f'{RESULTS_DIR}/e3_causal_{m}.json'
+    if not os.path.exists(p): continue
+    d = json.load(open(p))
+    ks, ties = d['k'], d.get('head_set_ties', {})
+    row, vals = [], []
+    for k in KS:
+        v = (ks.get(k) or {}).get('break', {}).get('flip_rate')
+        row.append('  -  ' if v is None else f'{v:.3f}')
+        if v is not None: vals.append(v)
+    tie_ks = ','.join(k for k in KS if (ties.get(k) or {}).get('arbitrary')) or '-'
+    trend = ''
+    if len(vals) >= 2:
+        trend = 'RISING' if vals[-1] - vals[-2] > 0.02 else 'FLAT'
+    print(f'{m:22s} ' + ' '.join(f'{r:<7s}' for r in row) + f' {tie_ks:12s}  {trend}')
+print()
+print('RISING at the top end  => the k=10 null was a k-ceiling artifact (redundancy).')
+print('FLAT while others rise => mechanism-vs-causality dissociation.')
+print('tie-broken k           => at that k the head SET was decided by sort order, not')
+print('                          score; a null there says nothing about the heads.')
+print('\nEXPLORATORY — report as such.')
+""" % {"models": json.dumps(MODELS)}))
+    return notebook(cells)
+
+
+# ---------------------------------------------------------------------------
+# 11 — E5 robustness
+# ---------------------------------------------------------------------------
+
+def nb_11_e5() -> dict:
+    cells = [md(
+        "# 11 · E5 Robustness  ·  **needs A100**\n"
+        "The §9 robustness checks on the clean panel. Every variant writes a **tagged** "
+        "artifact and **never touches the primary one** — the pre-registered analysis "
+        "stays exactly where it is, and each check is read *beside* it.\n\n"
+        "| variant | what it answers | cost |\n|---|---|---|\n"
+        "| **wu** | does the mechanism survive a **different head detector** (Wu/copy "
+        "heads, not argmax)? **the insurance policy on the headline** | 1 E2 / model |\n"
+        "| **m2sens** | how much of the M2 story is the **0.10 distractor-mass floor**? "
+        "Reported side-by-side with the registered floor — *not* a re-tune | 1 E2 / model |\n"
+        "| ksens | does it hold at the sensitivity k? | 1 E2 / model |\n"
+        "| steps3 | does it hold averaging masses over 3 answer steps? | 1 E2 / model |\n"
+        "| seeds | reliability: mean ± range over seed repeats (+ R_self) | 3 E2 / model |\n\n"
+        "**First pass: `wu`, on olmo + phi.** Those carry the causal headline, so "
+        "detector-independence there is what a reviewer will demand first.\n\n"
+        "> **On m2sens.** The pilot showed the registered floor 0.10 admits ~95.6% of "
+        "distractor_hit failures as M2. That observation was made *after* seeing the "
+        "results, so moving the floor now and re-running the primary would be HARKing. "
+        "The floor therefore stays at 0.10 for the primary analysis; the alternative is "
+        "reported as a sensitivity artifact and the permissiveness becomes a stated "
+        "limitation. `scripts/e2_signatures.py` enforces this: `--m2-min-distractor-mass` "
+        "refuses to run without a `--tag`.")]
+    cells += setup_cells()
+    cells.append(md("## 1) shell_share must match the grid E1/E2 used"))
+    cells.append(SHELL_SHARE_CELL)
+    cells.append(md("## 2) Choose the variants and the models"))
+    cells.append(code(r"""
+# Comma-separated: wu, ksens, steps3, seeds, m2sens   (or 'all')
+VARIANTS = 'wu'
+
+# The alternative M2 floor, for the m2sens variant ONLY. The PRE-REGISTERED floor
+# (0.10) remains the primary analysis and is not modified. Pooled pilot quantiles
+# of distractor_mass over distractor_hit failures: p5=0.103 p25=0.154 p50=0.193.
+M2_ALT_FLOOR = 0.15
+
+# olmo + phi carry the causal headline -> check them first. Widen to the full panel
+# once you have seen the per-model cost.
+E5_MODELS = ['olmo2_7b_instruct', 'phi35_mini']
+# E5_MODELS = MODELS   # <- the whole panel
+
+print('E5 variants =', VARIANTS, '| models =', E5_MODELS, '| m2 alt floor =', M2_ALT_FLOOR)
+"""))
+    cells += _model_loop(
+        "3) E5 — robustness per model",
+        "Each variant re-runs E2 in a clean subprocess with the pinned model and "
+        "writes a TAGGED artifact; the primary is never overwritten.",
+        "['scripts/e5_robustness.py', '--model', key, '--variants', VARIANTS,"
+        " '--m2-alt-floor', str(M2_ALT_FLOOR)]",
+        first_est_h=5.0,
+        skip_check="os.path.exists(f'{RESULTS_DIR}/e5_robustness_{key}.json')",
+        overwrite_default=True,
+        models="E5_MODELS")
+    cells.append(md("## 4) Detector independence — does the mechanism survive the Wu head list?"))
+    cells.append(code(r"""
+import json, os
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+
+def buckets(p):
+    if not os.path.exists(p): return '-'
+    r = json.load(open(p))['sample_level']['bucket_rates']
+    return ' '.join(f'{k[:4]}={v:.2f}' for k, v in r.items() if v > 0.01)
+
+print(f'{"model":22s} {"PRIMARY (argmax, m2=0.10)":36s} {"Wu / copy heads":36s}')
+for m in E5_MODELS:
+    print(f'{m:22s} {buckets(f"{RESULTS_DIR}/e2_signatures_{m}.json"):36s} '
+          f'{buckets(f"{RESULTS_DIR}/e2_signatures_{m}_wu.json"):36s}')
+print('\nIf the Wu column reproduces the primary column, the mechanism is not an '
+      'artifact of the detector choice.')
+"""))
+    cells.append(md(
+        "## 5) M2 threshold sensitivity — side by side, not a replacement\n"
+        "The left column is the analysis of record. The right column shows how much of "
+        "it rests on the floor. Both go in the paper."))
+    cells.append(code(r"""
+left  = 'PRIMARY (m2 floor 0.10, prereg)'
+right = 'SENSITIVITY (m2 floor ' + format(M2_ALT_FLOOR, '.2f') + ')'
+print(f'{"model":22s} {left:36s} {right:36s}')
+for m in E5_MODELS:
+    print(f'{m:22s} {buckets(f"{RESULTS_DIR}/e2_signatures_{m}.json"):36s} '
+          f'{buckets(f"{RESULTS_DIR}/e2_signatures_{m}_m2sens.json"):36s}')
+print('\nA large M2 drop on the right does NOT mean the primary is wrong — it means the')
+print('M2 rate is floor-sensitive, and that belongs in the paper as a limitation.')
+"""))
+    return notebook(cells)
+
+
 def main():
+    # Filenames carry the Colab runtime they need, so you never start a 20 h run
+    # on the wrong GPU.
+    #   A100  — every notebook that LOADS a model. gemma-2-9b is forced to eager
+    #           attention (sdpa silently drops its logit-softcapping) and nb 00
+    #           loads fp32 for the math gate, so 40 GB is the floor. L4/T4 will
+    #           OOM.
+    #   CPU   — pure-JSON analysis; no accelerator needed (works on any runtime).
     outputs = {
-        "00_setup_and_guardrails.ipynb": nb_00(),
-        "01_e1_breaking_surface.ipynb": nb_e1(),
-        "02_e2_signatures.ipynb": nb_e2(),
-        "03_e3_causal.ipynb": nb_e3(),
-        "04_e4_e5_analysis.ipynb": nb_e4_e5(),
-        "05_analyze_breaking_models.ipynb": nb_05_analyze_breaking(),
-        "06_shell_share_e1_e2.ipynb": nb_06_shell_share_rerun(),
-        "07_e3_causal_e4_families.ipynb": nb_07_e3_e4(),
-        "08_e3_backfill_e4.ipynb": nb_08_e3_backfill(),
+        "00_A100_setup_and_guardrails.ipynb": nb_00(),
+        "01_A100_e1_breaking_surface.ipynb": nb_e1(),
+        "02_A100_e2_signatures.ipynb": nb_e2(),
+        "03_A100_e3_causal.ipynb": nb_e3(),
+        "04_A100_e4_e5_analysis.ipynb": nb_e4_e5(),
+        "05_A100_analyze_breaking_models.ipynb": nb_05_analyze_breaking(),
+        "06_A100_shell_share_e1_e2.ipynb": nb_06_shell_share_rerun(),
+        "07_A100_e3_causal_e4_families.ipynb": nb_07_e3_e4(),
+        "08_A100_e3_backfill_e4.ipynb": nb_08_e3_backfill(),
+        "09_A100_e2_rerun_record_pairs.ipynb": nb_09_e2_pairs(),
+        "10_A100_e3_ksweep_EXPLORATORY.ipynb": nb_10_ksweep(),
+        "11_A100_e5_robustness.ipynb": nb_11_e5(),
     }
+    # Drop the pre-GPU-tag filenames so the folder never shows two copies.
+    for stale in NB_DIR.glob("*.ipynb"):
+        if stale.name not in outputs:
+            stale.unlink()
+            print("removed stale", stale.name)
     for name, nb in outputs.items():
         path = NB_DIR / name
         path.write_text(json.dumps(nb, indent=1), encoding="utf-8")

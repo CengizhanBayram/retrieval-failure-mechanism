@@ -69,6 +69,17 @@ def main(argv=None):
     ap.add_argument("--prereg", default=None)
     ap.add_argument("--skip-runs", action="store_true",
                     help="aggregate existing variant outputs without re-running")
+    ap.add_argument("--variants", default="all",
+                    help="comma-separated subset of robustness checks to run: "
+                         "wu (Wu/copy detector head list), ksens (sensitivity k), "
+                         "steps3 (answer_steps=3), seeds (headline seed repeats), "
+                         "m2sens (alternative M2 distractor-mass floor). "
+                         "'all' runs every check. Each variant is a full E2 re-run, "
+                         "so a subset keeps the panel tractable.")
+    ap.add_argument("--m2-alt-floor", type=float, default=None,
+                    help="alternative M2 min_distractor_mass for the 'm2sens' variant. "
+                         "The PRE-REGISTERED floor stays the primary analysis; this "
+                         "only produces a side-by-side sensitivity artifact.")
     args = ap.parse_args(argv)
 
     paths_cfg = C.load_paths_cfg()
@@ -80,22 +91,49 @@ def main(argv=None):
     if args.prereg:
         base += ["--prereg", args.prereg]
 
-    variants = {
-        "wu": base + ["--detector", "copy", "--tag", "wu"],                 # (a)
-        "ksens": base + ["--k-heads", str(sens_k), "--tag", "ksens"],       # (a)
-        "steps3": base + ["--answer-steps", "3", "--tag", "steps3"],        # (d)
-    }
-    for i, s in enumerate(repeats):
-        variants[f"seed{i}"] = base + ["--seed", str(s), "--tag", f"seed{i}"]  # (b)
+    want = {v.strip() for v in args.variants.split(",")} if args.variants != "all" \
+        else {"wu", "ksens", "steps3", "seeds", "m2sens"}
+    known = {"wu", "ksens", "steps3", "seeds", "m2sens"}
+    unknown = want - known
+    if unknown:
+        raise SystemExit(f"--variants: unknown {sorted(unknown)}; known: {sorted(known)}")
+    if "m2sens" in want and args.m2_alt_floor is None:
+        raise SystemExit("--variants m2sens requires --m2-alt-floor (the alternative "
+                         "M2 floor to report ALONGSIDE the pre-registered one).")
 
+    variants = {}
+    if "wu" in want:
+        variants["wu"] = base + ["--detector", "copy", "--tag", "wu"]          # (a)
+    if "ksens" in want:
+        variants["ksens"] = base + ["--k-heads", str(sens_k), "--tag", "ksens"]  # (a)
+    if "steps3" in want:
+        variants["steps3"] = base + ["--answer-steps", "3", "--tag", "steps3"]   # (d)
+    if "seeds" in want:
+        for i, s in enumerate(repeats):
+            variants[f"seed{i}"] = base + ["--seed", str(s), "--tag", f"seed{i}"]  # (b)
+    if "m2sens" in want:
+        # (e) M2 THRESHOLD SENSITIVITY. The pre-registered floor stays the primary
+        # analysis; this is a tagged side-by-side artifact, never an overwrite.
+        variants["m2sens"] = base + ["--m2-min-distractor-mass", str(args.m2_alt_floor),
+                                     "--tag", "m2sens"]
+
+    log.info("E5 variants to run for %s: %s", args.model, list(variants) or "(none)")
     if not args.skip_runs:
         for name, cmd in variants.items():
             _run(cmd)
 
     # ---- aggregate ----
     agg = {"headline_variants": {}, "seed_repeats": {}, "R_self": {}}
-    for name in ("wu", "ksens", "steps3"):
+    # "primary" = the pre-registered analysis, carried alongside every variant so
+    # the sensitivity comparison is always read side-by-side, never as a
+    # replacement (§ amendment: the M2 floor is NOT re-tuned post hoc).
+    agg["primary"] = _bucket_rates(results_dir, args.model, None)
+    for name in ("wu", "ksens", "steps3", "m2sens"):
         agg["headline_variants"][name] = _bucket_rates(results_dir, args.model, name)
+    agg["m2_floor"] = {
+        "preregistered": float(PR.get(prereg, "signature_rules.m2_capture.min_distractor_mass")),
+        "alternative": args.m2_alt_floor,
+    }
 
     repeat_rates = [_bucket_rates(results_dir, args.model, f"seed{i}")
                     for i in range(len(repeats))]
