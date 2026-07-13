@@ -354,7 +354,19 @@ def _model_loop(title, subtitle, script_argv_tmpl, first_est_h, skip_check,
     it also ignores per-cell checkpoints (E1). ``overwrite_default`` sets the
     cell's initial ``OVERWRITE`` value. ``models`` overrides the model list
     (default: the full panel)."""
-    models = models if models is not None else MODELS
+    # ``models`` is either a literal list (embedded as JSON) or the NAME of a
+    # variable defined in an earlier cell (embedded verbatim as an expression).
+    # json.dumps()-ing a name would emit MODELS = "E5_MODELS" -- a string, which
+    # `for key in MODELS` then iterates CHARACTER BY CHARACTER. That is a silent,
+    # expensive failure: the loop runs, every "model" (E, 5, _, M, O, D, S) fails
+    # its lookup, each failure is caught and logged as a skipped variant, and the
+    # notebook finishes "successfully" having computed nothing.
+    if models is None:
+        models_src = json.dumps(MODELS)
+    elif isinstance(models, str):
+        models_src = models
+    else:
+        models_src = json.dumps(list(models))
     fresh = json.dumps([fresh_arg] if fresh_arg else [])
     return [
         md(f"## {title}\n{subtitle}"),
@@ -364,6 +376,11 @@ OVERWRITE = %(ovr)s   # True = recompute + OVERWRITE every model; False = skip f
 RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
 MODELS = %(models)s
 FRESH = %(fresh)s
+# A bare string here would be iterated character by character, and every "model"
+# would fail its lookup and be logged as a skipped variant — a loop that appears
+# to run fine while computing nothing. Fail immediately instead.
+if not isinstance(MODELS, (list, tuple)) or not all(isinstance(m, str) for m in MODELS):
+    raise TypeError(f'MODELS must be a list of model keys, got {MODELS!r}')
 start = time.time(); model_times = []
 for key in MODELS:
     if (not OVERWRITE) and (%(skip)s):
@@ -386,7 +403,7 @@ for key in MODELS:
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-""" % {"models": json.dumps(models), "skip": skip_check, "est": first_est_h,
+""" % {"models": models_src, "skip": skip_check, "est": first_est_h,
         "cap": HARD_CAP_H, "argv": script_argv_tmpl, "fresh": fresh,
         "ovr": "True" if overwrite_default else "False"}),
     ]
@@ -953,10 +970,10 @@ M2_ALT_FLOOR = 0.15
 # olmo + phi carry the causal headline -> check them first. Widen to the full panel
 # once you have seen the per-model cost.
 E5_MODELS = ['olmo2_7b_instruct', 'phi35_mini']
-# E5_MODELS = MODELS   # <- the whole panel
+# E5_MODELS = %(panel)s   # <- the whole panel
 
 print('E5 variants =', VARIANTS, '| models =', E5_MODELS, '| m2 alt floor =', M2_ALT_FLOOR)
-"""))
+""" % {"panel": json.dumps(MODELS)}))
     cells += _model_loop(
         "3) E5 — robustness per model",
         "Each variant re-runs E2 in a clean subprocess with the pinned model and "
