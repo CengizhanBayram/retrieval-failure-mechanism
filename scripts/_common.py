@@ -26,6 +26,49 @@ from failure_mech.probes import CellSpec  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
+# Artifact freshness — the "resume skipped a stale run" trap
+# ---------------------------------------------------------------------------
+
+def artifact_is_current(path: str | Path) -> bool:
+    """True iff ``path`` exists AND the config hashes recorded in its provenance
+    still match the config files on disk.
+
+    Resume logic must never ask "does an output file exist?" — after any earlier
+    campaign, an output file exists for EVERY model, so that question answers
+    "yes" for stale results and the resume silently skips work it never did. This
+    bit twice: notebook 09 skipped the whole panel (every model already had an
+    ``e2_signatures_*.json`` from the pre-fix runs), and notebook 10 would have
+    skipped E3 models still carrying the old ``k_list = [1, 5, 10]``.
+
+    Every artifact records ``provenance.config_hashes`` (config path -> SHA-256),
+    so the honest question is "was this produced under the configs I am running
+    now?". Changing grid.yaml (shell_share) or e3.yaml (k_list) therefore
+    invalidates exactly the artifacts it should, automatically.
+
+    Paths are compared by BASENAME: the recorded key is absolute and differs
+    between a Colab clone and a local checkout. Any recorded config that no longer
+    exists, or whose bytes changed, makes the artifact stale.
+    """
+    p = Path(path)
+    if not p.exists():
+        return False
+    try:
+        with open(p, encoding="utf-8") as f:
+            recorded = json.load(f)["provenance"]["config_hashes"]
+    except (json.JSONDecodeError, KeyError, OSError):
+        return False        # unreadable or pre-provenance artifact -> not current
+    if not recorded:
+        return False
+
+    from failure_mech.provenance import hash_file
+    for cfg_path, old_hash in recorded.items():
+        current = REPO_ROOT / "configs" / Path(cfg_path.replace("\\", "/")).name
+        if not current.exists() or hash_file(current) != old_hash:
+            return False
+    return True
+
+
+# ---------------------------------------------------------------------------
 # Determinism (§1.7)
 # ---------------------------------------------------------------------------
 

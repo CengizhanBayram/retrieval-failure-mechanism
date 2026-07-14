@@ -424,7 +424,7 @@ def nb_e1() -> dict:
         "under the 23 h cap.",
         "['scripts/e1_breaking_surface.py', '--model', key, '--stage', 'auto']",
         first_est_h=5.0,
-        skip_check="os.path.exists(f'{RESULTS_DIR}/e1_breaking_cells_{key}.json')",
+        skip_check="C.artifact_is_current(f'{RESULTS_DIR}/e1_breaking_cells_{key}.json')",
         fresh_arg="--fresh")
     return notebook(cells)
 
@@ -442,7 +442,7 @@ def nb_e2() -> dict:
         "Capture runs sdpa (Gemma-2 auto-eager for softcapping).",
         "['scripts/e2_signatures.py', '--model', key]",
         first_est_h=4.0,
-        skip_check="os.path.exists(f'{RESULTS_DIR}/e2_signatures_{key}.json')")
+        skip_check="C.artifact_is_current(f'{RESULTS_DIR}/e2_signatures_{key}.json')")
     return notebook(cells)
 
 
@@ -459,7 +459,7 @@ def nb_e3() -> dict:
         "Heavier than E2 (5 runs/pair x 3 k). The guard protects the 24 h budget.",
         "['scripts/e3_causal.py', '--model', key]",
         first_est_h=6.0,
-        skip_check="os.path.exists(f'{RESULTS_DIR}/e3_causal_{key}.json')")
+        skip_check="C.artifact_is_current(f'{RESULTS_DIR}/e3_causal_{key}.json')")
     return notebook(cells)
 
 
@@ -480,7 +480,7 @@ def nb_e4_e5() -> dict:
         "Each variant is a clean subprocess with the pinned model.",
         "['scripts/e5_robustness.py', '--model', key]",
         first_est_h=8.0,
-        skip_check="os.path.exists(f'{RESULTS_DIR}/e5_robustness_{key}.json')")
+        skip_check="C.artifact_is_current(f'{RESULTS_DIR}/e5_robustness_{key}.json')")
     cells.append(md("## Inspect the headline table"))
     cells.append(code(r"""
 import json, os
@@ -526,13 +526,13 @@ print('\n-> E2/E3 below run only for models MISSING their output. '
         "Mistral, Phi from your run). Near-ceiling models just produce 0 cells fast.",
         "['scripts/e2_signatures.py', '--model', key]",
         first_est_h=4.0,
-        skip_check="os.path.exists(f'{RESULTS_DIR}/e2_signatures_{key}.json')")
+        skip_check="C.artifact_is_current(f'{RESULTS_DIR}/e2_signatures_{key}.json')")
     cells += _model_loop(
         "E3 — causal patching for the missing models",
         "Runs only where `e3_causal_{model}.json` is absent.",
         "['scripts/e3_causal.py', '--model', key]",
         first_est_h=6.0,
-        skip_check="os.path.exists(f'{RESULTS_DIR}/e3_causal_{key}.json')")
+        skip_check="C.artifact_is_current(f'{RESULTS_DIR}/e3_causal_{key}.json')")
     cells.append(md("## E4 — refresh the family table + causal decision"))
     cells.append(code("run(['scripts/e4_families.py', '--models'] + %s)" % json.dumps(MODELS)))
     cells.append(md("## Read the headline signal"))
@@ -596,14 +596,14 @@ else:
         "every cell — every model must log `200 cells`, none should say `skip`.",
         "['scripts/e1_breaking_surface.py', '--model', key, '--stage', 'auto']",
         first_est_h=6.0,
-        skip_check="os.path.exists(f'{RESULTS_DIR}/e1_breaking_cells_{key}.json')",
+        skip_check="C.artifact_is_current(f'{RESULTS_DIR}/e1_breaking_cells_{key}.json')",
         fresh_arg="--fresh", overwrite_default=True)
     cells += _model_loop(
         "4) E2 — signatures",
         "Capture + four-bucket classification on the breaking cells.",
         "['scripts/e2_signatures.py', '--model', key]",
         first_est_h=4.0,
-        skip_check="os.path.exists(f'{RESULTS_DIR}/e2_signatures_{key}.json')",
+        skip_check="C.artifact_is_current(f'{RESULTS_DIR}/e2_signatures_{key}.json')",
         overwrite_default=True)
     cells.append(md("## 5) Check the run is clean, then continue in notebook 07\n"
                     "Every model must show `ncells=200` and `shell_share` in its sims — if any "
@@ -666,7 +666,7 @@ print('\nAll clean. Proceeding to E3.')
         "with `OVERWRITE=False` to resume the remaining models.",
         "['scripts/e3_causal.py', '--model', key]",
         first_est_h=6.0,
-        skip_check="os.path.exists(f'{RESULTS_DIR}/e3_causal_{key}.json')",
+        skip_check="C.artifact_is_current(f'{RESULTS_DIR}/e3_causal_{key}.json')",
         overwrite_default=True)
     cells.append(md("## 4) E4 — family table + authoritative causal decision"))
     cells.append(code("run(['scripts/e4_families.py', '--models'] + %s)" % json.dumps(MODELS)))
@@ -739,7 +739,7 @@ for m in %(all)s:
         "session.",
         "['scripts/e3_causal.py', '--model', key]",
         first_est_h=6.0,
-        skip_check="os.path.exists(f'{RESULTS_DIR}/e3_causal_{key}.json')",
+        skip_check="C.artifact_is_current(f'{RESULTS_DIR}/e3_causal_{key}.json')",
         overwrite_default=True, models=E3_BACKFILL_MODELS)
     cells.append(md("## 4) E4 over the FULL panel (now that every E3 is present)"))
     cells.append(code("run(['scripts/e4_families.py', '--models'] + %s)" % json.dumps(MODELS)))
@@ -784,6 +784,13 @@ def nb_09_e2_pairs() -> dict:
         "and it must be resolved before anything is called confirmatory.")]
     cells += setup_cells()
     cells.append(md(
+        "## 0) Grid check — must run BEFORE anything reads an artifact\n"
+        "`shell_share` is now committed in `configs/grid.yaml`, so this is a no-op "
+        "guard. It stays because the freshness check below compares each artifact's "
+        "recorded config hashes against `grid.yaml` **as it is on disk right now** — "
+        "so the grid has to be settled before any artifact is judged current or stale."))
+    cells.append(SHELL_SHARE_CELL)
+    cells.append(md(
         "## 1) Back up the pre-fix artifacts (idempotent — safe to re-run every session)\n"
         "This does **not** overwrite a backup that already exists. The `.pre_pairfix` "
         "files are the only surviving record of the pre-fix numbers, and the "
@@ -811,12 +818,13 @@ for f in sorted(glob.glob(f'{RESULTS_DIR}/e2_signatures_*.json')):
     print(f'{m:22s} {d["pairs_used"]:6d}  {str("pairs_by_cell" in d):14s} '
           f'{"yes" if os.path.exists(f + ".pre_pairfix") else "MISSING"}')
 
-# A model is DONE only when its E2 artifact carries the pair list. Every model
-# already has an e2_signatures_*.json from the pre-fix runs, so testing mere file
-# existence would skip the entire panel and this notebook would do nothing.
+# A model is DONE only when its E2 artifact carries the pair list AND is current
+# (produced under today's configs). Every model already has an e2_signatures_*.json
+# from the pre-fix runs, so testing mere file existence would skip the entire panel
+# and this notebook would do nothing at all.
 def _pairs_recorded(key):
     p = f'{RESULTS_DIR}/e2_signatures_{key}.json'
-    if not os.path.exists(p):
+    if not C.artifact_is_current(p):
         return False
     with open(p) as fh:
         return 'pairs_by_cell' in json.load(fh)
@@ -824,8 +832,6 @@ def _pairs_recorded(key):
 print('\nalready done (pair list recorded):',
       [m for m in %(panel)s if _pairs_recorded(m)] or 'none')
 """ % {"panel": json.dumps(MODELS)}))
-    cells.append(md("## 2) shell_share must match the grid the current results used"))
-    cells.append(SHELL_SHARE_CELL)
     cells.append(md(
         "## 3) E2 — same config, now recording `pairs_by_cell`\n"
         "**This does not fit in one 24 h Colab session** (llama alone is ~1.4 h; gemma "
@@ -928,13 +934,71 @@ if missing:
                      'different sample than E2 measured the mechanism on.' % missing)
 print('OK — extended sweep active, and every E2 artifact carries its pair list.')
 """))
-    cells += _model_loop(
-        "3) E3 — extended k-sweep (exploratory)",
-        "Recomputes E3 across k = 1,5,10,20,30, on E2's recorded pairs.",
-        "['scripts/e3_causal.py', '--model', key]",
-        first_est_h=8.0,
-        skip_check="os.path.exists(f'{RESULTS_DIR}/e3_causal_{key}.json')",
-        overwrite_default=True)
+    cells.append(md(
+        "## 3) E3 — extended k-sweep (exploratory)\n"
+        "**The heaviest run in the suite** — five k-values instead of three, on the "
+        "whole panel. It will not finish in one 24 h session. It is resumable: leave "
+        "`OVERWRITE = False` and re-run until every model reports all five k. A model "
+        "is skipped only if its E3 artifact is **current** (built under today's "
+        "`e3.yaml`, i.e. carrying k = 20 and 30) **and** was built from E2's recorded "
+        "pair list — not merely because an `e3_causal_*.json` exists, since every model "
+        "has a stale one from the k ≤ 10 runs."))
+    cells.append(code(r"""
+import json, os
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+K_WANTED = {'1', '5', '10', '20', '30'}
+
+# Skip a model only if its E3 is CURRENT (configs unchanged since it was written),
+# covers every k we are sweeping, and was built from E2's recorded pairs. "The file
+# exists" is not the same question and would skip the entire stale panel.
+def _e3_current(key):
+    p = f'{RESULTS_DIR}/e3_causal_{key}.json'
+    if not C.artifact_is_current(p):
+        return False
+    with open(p) as fh:
+        d = json.load(fh)
+    if not K_WANTED <= set(d.get('k', {})):
+        return False
+    return d['provenance'].get('pairs_source') == 'e2.pairs_by_cell'
+
+_PANEL = %(panel)s
+print('already complete:', [m for m in _PANEL if _e3_current(m)] or 'none')
+print('to run          :', [m for m in _PANEL if not _e3_current(m)])
+""" % {"panel": json.dumps(MODELS)}))
+    cells.append(code(r"""
+import os, time, gc, torch
+# A single model's k-sweep can outlast a whole session, so the standard per-model
+# guard is the wrong tool: it would refuse to START a model it cannot finish and
+# the session would idle. Instead E3 is given the REMAINING budget and stops
+# cleanly between k values, checkpointing each one as it lands. Nothing is ever
+# lost, and the session never runs past the cap.
+CAP_H = %(cap)d
+start = time.time()
+
+for key in [m for m in _PANEL if not _e3_current(m)]:
+    left = CAP_H - (time.time() - start) / 3600.0
+    if left < 0.5:
+        print(f'STOP before {key}: {left:.1f} h left of the {CAP_H} h cap. '
+              f'Re-run this notebook to continue — finished k are checkpointed.')
+        break
+    print(f'--- {key}: {left:.1f} h of budget left ---')
+    t0 = time.time()
+    try:
+        run(['scripts/e3_causal.py', '--model', key, '--max-hours', f'{left:.2f}'])
+        done = _e3_current(key)
+        print(f'{key} {"COMPLETE" if done else "partial (resume to finish)"} '
+              f'after {(time.time()-t0)/3600:.2f} h')
+    except Exception as e:
+        print(f'{key} FAILED after {(time.time()-t0)/3600:.2f} h: '
+              f'{type(e).__name__}: {str(e)[:200]}  -- continuing to the next model.')
+    finally:
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+remaining = [m for m in _PANEL if not _e3_current(m)]
+print('\nstill incomplete:', remaining or 'none — the sweep is finished.')
+""" % {"cap": HARD_CAP_H}))
     cells.append(md("## 4) E4 — family table + causal decision"))
     cells.append(code("run(['scripts/e4_families.py', '--models'] + %s)" % json.dumps(MODELS)))
     cells.append(md("## 5) The saturation curves, with the head-set tie flag"))
@@ -1015,15 +1079,35 @@ E5_MODELS = ['olmo2_7b_instruct', 'phi35_mini']
 
 print('E5 variants =', VARIANTS, '| models =', E5_MODELS, '| m2 alt floor =', M2_ALT_FLOOR)
 """ % {"panel": json.dumps(MODELS)}))
+    cells.append(code(r"""
+import json, os
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+
+# A model is done only if the TAGGED E2 artifact for every requested variant exists
+# AND is current (same configs). Testing `e5_robustness_{key}.json` exists would be
+# wrong twice over: llama/qwen carry a stale one from the old 140-cell grid, and it
+# says nothing about WHICH variants are in it.
+_TAG = {'wu': 'wu', 'ksens': 'ksens', 'steps3': 'steps3', 'm2sens': 'm2sens'}
+
+def _e5_current(key):
+    want = [v.strip() for v in VARIANTS.split(',')]
+    if 'all' in want or 'seeds' in want:
+        return False           # seed repeats: no cheap completeness test, just re-run
+    return all(C.artifact_is_current(f'{RESULTS_DIR}/e2_signatures_{key}_{_TAG[v]}.json')
+               for v in want)
+
+print('already complete:', [m for m in E5_MODELS if _e5_current(m)] or 'none')
+print('to run          :', [m for m in E5_MODELS if not _e5_current(m)])
+"""))
     cells += _model_loop(
-        "3) E5 — robustness per model",
+        "3) E5 — robustness per model (resumable)",
         "Each variant re-runs E2 in a clean subprocess with the pinned model and "
         "writes a TAGGED artifact; the primary is never overwritten.",
         "['scripts/e5_robustness.py', '--model', key, '--variants', VARIANTS,"
         " '--m2-alt-floor', str(M2_ALT_FLOOR)]",
         first_est_h=5.0,
-        skip_check="os.path.exists(f'{RESULTS_DIR}/e5_robustness_{key}.json')",
-        overwrite_default=True,
+        skip_check="_e5_current(key)",
+        overwrite_default=False,
         models="E5_MODELS")
     cells.append(md("## 4) Detector independence — does the mechanism survive the Wu head list?"))
     cells.append(code(r"""

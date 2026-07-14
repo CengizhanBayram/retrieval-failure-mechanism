@@ -154,7 +154,9 @@ def _generate_batch_adaptive(model, tokenizer, input_ids_list, decoding_cfg):
         mid = len(input_ids_list) // 2
         return (_generate_batch_adaptive(model, tokenizer, input_ids_list[:mid], decoding_cfg)
                 + _generate_batch_adaptive(model, tokenizer, input_ids_list[mid:], decoding_cfg))
-    gen = out[:, input_ids_t.shape[1]:]
+    gen = out[:, maxlen:]          # maxlen == input_ids_t.shape[1]; input_ids_t is
+                                   # deleted on the OOM path, which always raises or
+                                   # returns, but referencing it here reads as unsafe.
     results = []
     for row in gen:
         toks = [int(t) for t in row.tolist()]

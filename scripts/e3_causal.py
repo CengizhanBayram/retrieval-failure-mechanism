@@ -23,6 +23,7 @@ import argparse
 import logging
 import random
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -68,7 +69,11 @@ def _pairs_from_e2(e2: dict, factory, cell, h: str, seed: int):
             "would have to re-derive the pairs and would not be measuring causality "
             "on the same sample as the mechanism. Re-run E2 (same config, same "
             "pre-registration) to record its pair list, then re-run E3.")
-    return [(factory.build(cell, int(si), seed), factory.build(cell, int(fi), seed))
+    # Carries the SAMPLE INDICES alongside the probes: they are the only stable key
+    # for a probe across processes (id() is a memory address), so the baseline
+    # checkpoint can be keyed by them and survive a restart.
+    return [(int(si), factory.build(cell, int(si), seed),
+             int(fi), factory.build(cell, int(fi), seed))
             for si, fi in pairs.get(h, [])]
 
 
@@ -96,7 +101,7 @@ def _self_patch_check(model, tokenizer, cell_pairs, heads, decoding_cfg, patch_m
     for pairs in cell_pairs.values():
         if not pairs:
             continue
-        _sp, fp = pairs[0]
+        _si, _sp, _fi, fp = pairs[0]
         donor_self = patching.capture_donor_z(model, tokenizer, fp.input_ids, heads, decoding_cfg)
         plain = patching.generate_plain(model, tokenizer, fp.input_ids, decoding_cfg)
         patched = patching.generate_with_patch(model, tokenizer, fp.input_ids, heads,
@@ -109,11 +114,26 @@ def _self_patch_check(model, tokenizer, cell_pairs, heads, decoding_cfg, patch_m
     return True  # no pairs to check
 
 
+def _budget_exhausted(t_start: float, max_hours: float | None) -> bool:
+    """True once the wall-clock budget is spent. Checked BETWEEN k values so the
+    script always stops on a checkpoint boundary rather than being killed mid-k."""
+    if not max_hours:
+        return False
+    return (time.time() - t_start) / 3600.0 >= max_hours
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="E3 causal patching (§7).")
     ap.add_argument("--model", required=True)
     ap.add_argument("--prereg", default=None)
+    ap.add_argument("--max-hours", type=float, default=None,
+                    help="wall-clock budget. E3 stops cleanly BETWEEN k values once "
+                         "it is spent, so a Colab session that is about to be killed "
+                         "loses nothing: every finished k is already checkpointed.")
+    ap.add_argument("--fresh", action="store_true",
+                    help="ignore existing checkpoints and recompute every k")
     args = ap.parse_args(argv)
+    t_start = time.time()
 
     grid_cfg = C.load_yaml(C.config_path("grid.yaml"))
     decoding_cfg = C.load_yaml(C.config_path("decoding.yaml"))
@@ -171,22 +191,46 @@ def main(argv=None):
                 k, bt["n_tied_at_cut"], bt["cut_score"],
                 bt["n_tied_inside_k"], bt["n_tied_excluded"])
 
+    # ---- Checkpoints: one per k, so a killed session loses at most one k ------
+    ckpt = C.CheckpointManager(
+        results_dir, "e3", args.model, fresh=args.fresh,
+        fingerprint=C.probe_fingerprint(
+            [C.config_path("e3.yaml"), C.config_path("grid.yaml"),
+             C.config_path("decoding.yaml"), PR.resolve_prereg_path(args.prereg)],
+            mcfg["revision"], seed))
+
     # ---- Precompute pairs + unpadded baselines ONCE (independent of k) -------
     # Pairs depend only on (cell, seed); baselines and the no-patch rerun depend
     # only on the recipient prompt. Computing them once avoids re-deriving them
     # for every k (a large saving on the heaviest experiment).
     cell_pairs: dict = {}
     baselines: dict = {}   # id(probe) -> {"base": bool, "rerun": bool}
+    # Baselines are 4 plain generations per pair and survive a restart unchanged,
+    # so they are checkpointed too: a resumed session must not pay for them twice.
+    base_ck = ckpt.load_cell("baselines")["result"] if ckpt.is_done("baselines") else None
     for h in cells_used:
         cell = _cellspec(surface[h]["axes"], surface[h])
         pairs = _pairs_from_e2(e2, factory, cell, h, seed)
         cell_pairs[h] = pairs
-        for (sp, fp) in pairs:
-            for probe in (sp, fp):
-                if id(probe) not in baselines:
-                    base = _grade_plain(model, tokenizer, probe, decoding_cfg)
-                    rerun = _grade_plain(model, tokenizer, probe, decoding_cfg)  # no-patch rerun
-                    baselines[id(probe)] = {"base": base, "rerun": rerun}
+        for (si, sp, fi, fp) in pairs:
+            for idx, probe in ((si, sp), (fi, fp)):
+                key = f"{h}:{idx}"
+                if key in baselines:
+                    continue
+                if base_ck is not None and key in base_ck:
+                    baselines[key] = base_ck[key]          # resumed, no GPU cost
+                    continue
+                baselines[key] = {
+                    "base": _grade_plain(model, tokenizer, probe, decoding_cfg),
+                    # independent no-patch rerun: detects GPU kernel nondeterminism
+                    "rerun": _grade_plain(model, tokenizer, probe, decoding_cfg),
+                }
+    if base_ck is None:
+        ckpt.save_cell("baselines", {"result": baselines})
+        log.info("baselines computed and checkpointed (%d probes).", len(baselines))
+    else:
+        log.info("baselines restored from checkpoint (%d probes, no GPU cost).",
+                 len(baselines))
 
     # Mechanism (E2) and causality (E3) must be measured on the SAME sample.
     # Fail loudly rather than report a causal claim over a different pair set.
@@ -202,55 +246,108 @@ def main(argv=None):
     self_patch_ok = _self_patch_check(model, tokenizer, cell_pairs, heads_max,
                                       decoding_cfg, patch_mode, args.model)
 
+    # ---- Flatten the pairs and precompute every random-control head set -------
+    # The control seeds depend on (pair, k) exactly as before, so the head sets
+    # drawn are IDENTICAL to the previous implementation — this only computes them
+    # up front instead of inside the loop.
+    pairs_flat = [(h, si, sp, fi, fp)
+                  for h in cells_used for (si, sp, fi, fp) in cell_pairs[h]]
+    rheads_r: dict = {}   # (pair_idx, k) -> control heads for the REPAIR direction
+    rheads_b: dict = {}   # (pair_idx, k) -> control heads for the BREAK  direction
+    ctrl_seeds_by_k: dict = {k: [] for k in k_list}
+    for i in range(1, len(pairs_flat) + 1):
+        for k in k_list:
+            rs = ctrl_seed_base + i * 7 + k
+            bs = ctrl_seed_base + i * 13 + k
+            rheads_r[(i, k)] = _random_heads(det, k, rs)
+            rheads_b[(i, k)] = _random_heads(det, k, bs)
+            ctrl_seeds_by_k[k].append({"pair": i, "repair_seed": rs, "break_seed": bs})
+
+    # ---- Capture each probe's donor ONCE, at the UNION of every head set -------
+    # z_h is the o_proj input slice for head h at the answer position; it does NOT
+    # depend on which OTHER heads are being captured. So the donor for any head set
+    # is an exact slice of a capture taken over a superset — bitwise identical.
+    # The old code re-captured per (pair, k), paying a full prompt forward each
+    # time: 4 x len(k_list) captures per pair (20 at five k values) where 2 suffice.
+    # This is a pure speedup, not a change of method.
+    donors_sp: dict = {}
+    donors_fp: dict = {}
+    for i, (_h, _si, sp, _fi, fp) in enumerate(pairs_flat, start=1):
+        need_sp = set(heads_max) | {lh for k in k_list for lh in rheads_r[(i, k)]}
+        need_fp = set(heads_max) | {lh for k in k_list for lh in rheads_b[(i, k)]}
+        donors_sp[i] = patching.capture_donor_z(model, tokenizer, sp.input_ids,
+                                                sorted(need_sp), decoding_cfg)
+        donors_fp[i] = patching.capture_donor_z(model, tokenizer, fp.input_ids,
+                                                sorted(need_fp), decoding_cfg)
+    log.info("donors captured for %d pairs (%d prompt forwards; the per-(pair,k) "
+             "path would have needed %d).", len(pairs_flat), 2 * len(pairs_flat),
+             4 * len(k_list) * len(pairs_flat))
+
+    # ---- Per-k sweep, CHECKPOINTED ------------------------------------------
+    # E3 is the heaviest experiment and a k-sweep of a large panel does not fit in
+    # one Colab session. Writing only at the end meant a killed session lost the
+    # whole model. Each k is now checkpointed the moment it finishes, so a kill
+    # costs at most the k in flight.
     out_by_k: dict = {}
     for k in k_list:
+        if ckpt.is_done(f"k{k}"):
+            out_by_k[str(k)] = ckpt.load_cell(f"k{k}")["result"]
+            ckpt.note_skip(f"k{k}")
+            log.info("k=%d already checkpointed, skipping.", k)
+            continue
+        if _budget_exhausted(t_start, args.max_hours):
+            log.warning("time budget (%.1f h) reached before k=%d; stopping cleanly. "
+                        "Re-run to resume — finished k are checkpointed.",
+                        args.max_hours, k)
+            break
+
         heads = heads_max[:k]
         ind = {"repair": [], "break": [], "ctrl_repair": [], "ctrl_break": [],
                "nopatch_repair": [], "nopatch_break": []}
-        ctrl_seeds = []
-        pair_counter = 0
 
-        for h in cells_used:
-            for (sp, fp) in cell_pairs[h]:
-                pair_counter += 1
-                base_fp = baselines[id(fp)]["base"]   # repair recipient baseline
-                base_sp = baselines[id(sp)]["base"]   # break  recipient baseline
+        for i, (h, si, sp, fi, fp) in enumerate(pairs_flat, start=1):
+            b_sp, b_fp = baselines[f"{h}:{si}"], baselines[f"{h}:{fi}"]
+            base_fp = b_fp["base"]   # repair recipient baseline
+            base_sp = b_sp["base"]   # break  recipient baseline
+            d_sp, d_fp = donors_sp[i], donors_fp[i]
 
-                donor_success = patching.capture_donor_z(model, tokenizer, sp.input_ids, heads, decoding_cfg)
-                donor_failure = patching.capture_donor_z(model, tokenizer, fp.input_ids, heads, decoding_cfg)
-                rep_correct = _grade_patched(model, tokenizer, fp, heads, donor_success,
-                                             decoding_cfg, patch_mode)
-                brk_correct = _grade_patched(model, tokenizer, sp, heads, donor_failure,
-                                             decoding_cfg, patch_mode)
-                # Flips are defined RELATIVE TO THE UNPADDED NO-PATCH BASELINE so
-                # they are apples-to-apples with the patched (also unpadded) run,
-                # independent of the batched pairing path (§6 fix).
-                ind["repair"].append(int((not base_fp) and rep_correct))
-                ind["break"].append(int(base_sp and (not brk_correct)))
+            rep_correct = _grade_patched(model, tokenizer, fp, heads,
+                                         {lh: d_sp[lh] for lh in heads},
+                                         decoding_cfg, patch_mode)
+            brk_correct = _grade_patched(model, tokenizer, sp, heads,
+                                         {lh: d_fp[lh] for lh in heads},
+                                         decoding_cfg, patch_mode)
+            # Flips are defined RELATIVE TO THE UNPADDED NO-PATCH BASELINE so
+            # they are apples-to-apples with the patched (also unpadded) run,
+            # independent of the batched pairing path (§6 fix).
+            ind["repair"].append(int((not base_fp) and rep_correct))
+            ind["break"].append(int(base_sp and (not brk_correct)))
 
-                # random controls (resampled per pair; seed recorded, §4.4)
-                rseed_r = ctrl_seed_base + pair_counter * 7 + k
-                rseed_b = ctrl_seed_base + pair_counter * 13 + k
-                ctrl_seeds.append({"pair": pair_counter, "repair_seed": rseed_r,
-                                   "break_seed": rseed_b})
-                rheads_r = _random_heads(det, k, rseed_r)
-                rheads_b = _random_heads(det, k, rseed_b)
-                cr = _grade_patched(model, tokenizer, fp, rheads_r,
-                                    patching.capture_donor_z(model, tokenizer, sp.input_ids, rheads_r, decoding_cfg),
-                                    decoding_cfg, patch_mode)
-                cb = _grade_patched(model, tokenizer, sp, rheads_b,
-                                    patching.capture_donor_z(model, tokenizer, fp.input_ids, rheads_b, decoding_cfg),
-                                    decoding_cfg, patch_mode)
-                ind["ctrl_repair"].append(int((not base_fp) and cr))
-                ind["ctrl_break"].append(int(base_sp and (not cb)))
+            # random controls (resampled per pair; seed recorded, §4.4)
+            hr, hb = rheads_r[(i, k)], rheads_b[(i, k)]
+            cr = _grade_patched(model, tokenizer, fp, hr, {lh: d_sp[lh] for lh in hr},
+                                decoding_cfg, patch_mode)
+            cb = _grade_patched(model, tokenizer, sp, hb, {lh: d_fp[lh] for lh in hb},
+                                decoding_cfg, patch_mode)
+            ind["ctrl_repair"].append(int((not base_fp) and cr))
+            ind["ctrl_break"].append(int(base_sp and (not cb)))
 
-                # no-patch rerun flip (base vs an independent rerun): detects GPU
-                # kernel nondeterminism — should be ~0.
-                ind["nopatch_repair"].append(int((not base_fp) and baselines[id(fp)]["rerun"]))
-                ind["nopatch_break"].append(int(base_sp and (not baselines[id(sp)]["rerun"])))
+            # no-patch rerun flip (base vs an independent rerun): detects GPU
+            # kernel nondeterminism — should be ~0.
+            ind["nopatch_repair"].append(int((not base_fp) and b_fp["rerun"]))
+            ind["nopatch_break"].append(int(base_sp and (not b_sp["rerun"])))
 
-        out_by_k[str(k)] = _summarize(ind, margin_pp, alpha, stat_ci, seed, self_patch_ok)
-        out_by_k[str(k)]["random_control_seeds"] = ctrl_seeds
+        res = _summarize(ind, margin_pp, alpha, stat_ci, seed, self_patch_ok)
+        res["random_control_seeds"] = ctrl_seeds_by_k[k]
+        out_by_k[str(k)] = res
+        ckpt.save_cell(f"k{k}", {"result": res})
+        log.info("k=%d done and checkpointed (%.2f h elapsed).", k,
+                 (time.time() - t_start) / 3600.0)
+
+    missing = [str(k) for k in k_list if str(k) not in out_by_k]
+    if missing:
+        log.warning("INCOMPLETE: k=%s not computed (time budget). The output carries "
+                    "only the finished k; re-run to continue.", ",".join(missing))
 
     provenance = make_provenance(
         script="scripts/e3_causal.py",
@@ -259,6 +356,11 @@ def main(argv=None):
         model_key=args.model, model_sha=mcfg["revision"], seeds=seed,
         extra={"detection_seed": det.seed, "patch_mode": patch_mode,
                "pairs_source": "e2.pairs_by_cell", "n_pairs": n_pairs_e3,
+               "k_requested": [int(k) for k in k_list],
+               "k_completed": sorted(int(k) for k in out_by_k),
+               # An artifact stopped by the time budget is INCOMPLETE. Say so here
+               # rather than letting a partial k-sweep read as a finished one.
+               "complete": not missing,
                "note": "authoritative BH across 4 models x 2 directions is finalized in E4"})
     C.write_json(results_dir / f"e3_causal_{args.model}.json",
                  {"provenance": provenance, "k": out_by_k,

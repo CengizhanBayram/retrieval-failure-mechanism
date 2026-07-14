@@ -12,7 +12,7 @@ grid:
   context_length: [2048, 4096, 8192, 16384]
   needle_position: [0.1, 0.3, 0.5, 0.7, 0.9]
   distractor_count: [0, 2, 5, 10]
-  similarity: ["shell_same", "shell_diff"]
+  similarity: ["shell_same", "shell_diff", "shell_share"]
   # The 0-distractor rows are the clean baseline and are capture-free by
   # construction (no distractor spans). similarity is irrelevant when count==0;
   # the grid builder emits a single 0-distractor cell per (ctx, pos) tagged

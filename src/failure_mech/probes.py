@@ -222,7 +222,6 @@ class ProbeFactory:
         h = cell.cell_hash()
         if h in self._layouts:
             return self._layouts[h]
-        rng = random.Random(f"layout|{h}")
         ref = self._reference_slot_text(cell, random.Random(f"refval|{h}"))
         needle_ref = ref["needle"]
         distractor_ref = ref["distractor"]
