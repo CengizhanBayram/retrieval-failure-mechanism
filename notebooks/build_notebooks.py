@@ -783,57 +783,98 @@ def nb_09_e2_pairs() -> dict:
         "(the adaptive-batching path is the suspect) — that is a finding in itself, "
         "and it must be resolved before anything is called confirmatory.")]
     cells += setup_cells()
-    cells.append(md("## 1) Snapshot the current E2 numbers, so the re-run can be checked against them"))
+    cells.append(md(
+        "## 1) Back up the pre-fix artifacts (idempotent — safe to re-run every session)\n"
+        "This does **not** overwrite a backup that already exists. The `.pre_pairfix` "
+        "files are the only surviving record of the pre-fix numbers, and the "
+        "reproduction check in step 4 reads them **from disk** — so the check still "
+        "works in a *later* session, after this one has been recycled."))
     cells.append(code(r"""
 import json, os, glob, shutil
 RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
-BEFORE = {}
+
+def is_primary(f):
+    return not any(t in f for t in ('_wu','_ksens','_seed','_steps3','_m2sens'))
+
 for f in sorted(glob.glob(f'{RESULTS_DIR}/e2_signatures_*.json')):
-    if any(t in f for t in ('_wu','_ksens','_seed','_steps3','_m2sens')): continue
+    if not is_primary(f): continue
+    bak = f + '.pre_pairfix'
+    if not os.path.exists(bak):          # NEVER clobber an existing backup: a second
+        shutil.copy(f, bak)              # session would back up the RE-RUN as if it
+                                         # were the original and destroy the evidence.
+
+print(f'{"model":22s} {"pairs":>6s}  pairs_by_cell?  backup')
+for f in sorted(glob.glob(f'{RESULTS_DIR}/e2_signatures_*.json')):
+    if not is_primary(f): continue
     m = os.path.basename(f)[len('e2_signatures_'):-5]
     d = json.load(open(f))
-    BEFORE[m] = {'pairs_used': d['pairs_used'],
-                 'bucket_rates': d['sample_level']['bucket_rates'],
-                 'has_pairs': 'pairs_by_cell' in d}
-    shutil.copy(f, f + '.pre_pairfix')      # keep the old artifact for the diff
-for m, v in BEFORE.items():
-    print(f'{m:22s} pairs={v["pairs_used"]:4d}  pairs_by_cell_recorded={v["has_pairs"]}')
-print('\nold artifacts backed up as *.pre_pairfix')
-"""))
+    print(f'{m:22s} {d["pairs_used"]:6d}  {str("pairs_by_cell" in d):14s} '
+          f'{"yes" if os.path.exists(f + ".pre_pairfix") else "MISSING"}')
+
+# A model is DONE only when its E2 artifact carries the pair list. Every model
+# already has an e2_signatures_*.json from the pre-fix runs, so testing mere file
+# existence would skip the entire panel and this notebook would do nothing.
+def _pairs_recorded(key):
+    p = f'{RESULTS_DIR}/e2_signatures_{key}.json'
+    if not os.path.exists(p):
+        return False
+    with open(p) as fh:
+        return 'pairs_by_cell' in json.load(fh)
+
+print('\nalready done (pair list recorded):',
+      [m for m in %(panel)s if _pairs_recorded(m)] or 'none')
+""" % {"panel": json.dumps(MODELS)}))
     cells.append(md("## 2) shell_share must match the grid the current results used"))
     cells.append(SHELL_SHARE_CELL)
+    cells.append(md(
+        "## 3) E2 — same config, now recording `pairs_by_cell`\n"
+        "**This does not fit in one 24 h Colab session** (llama alone is ~1.4 h; gemma "
+        "is far slower on eager attention). It is built to be run over several "
+        "sessions: leave `OVERWRITE = False` and re-run this notebook until every model "
+        "reports `pairs_by_cell`. A model is skipped only if it **already has its pair "
+        "list** — *not* merely because an `e2_signatures_*.json` exists, since every "
+        "model has one of those from the pre-fix runs."))
     cells += _model_loop(
-        "3) E2 — same config, now recording pairs_by_cell",
+        "E2 per model (resumable)",
         "Identical pre-registration; the M2 floor is NOT changed here.",
         "['scripts/e2_signatures.py', '--model', key]",
         first_est_h=4.0,
-        skip_check="os.path.exists(f'{RESULTS_DIR}/e2_signatures_{key}.json')",
-        overwrite_default=True)
+        # Resume on the PAIR LIST, not on file existence — see the note above.
+        skip_check="_pairs_recorded(key)",
+        overwrite_default=False)
     cells.append(md(
-        "## 4) Reproduction check — did the identical re-run give the identical numbers?"))
+        "## 4) Reproduction check — did the identical re-run give the identical numbers?\n"
+        "Reads the `.pre_pairfix` backups from disk, so it is valid in any later "
+        "session. Run it once every model has been re-run."))
     cells.append(code(r"""
-import json, os
-print(f'{"model":22s} {"pairs before/after":20s} {"bucket rates":14s} verdict')
-drift = []
-for m, old in BEFORE.items():
-    p = f'{RESULTS_DIR}/e2_signatures_{m}.json'
-    if not os.path.exists(p):
-        print(f'{m:22s} (not re-run)'); continue
-    new = json.load(open(p))
+import json, os, glob
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+print(f'{"model":22s} {"pairs before -> after":24s} {"bucket rates":11s} verdict')
+drift, pending = [], []
+for bak in sorted(glob.glob(f'{RESULTS_DIR}/e2_signatures_*.json.pre_pairfix')):
+    cur = bak[:-len('.pre_pairfix')]
+    m = os.path.basename(cur)[len('e2_signatures_'):-5]
+    old, new = json.load(open(bak)), json.load(open(cur))
+    if 'pairs_by_cell' not in new:
+        pending.append(m)
+        print(f'{m:22s} {"(not re-run yet)":24s}')
+        continue
     same_pairs = new['pairs_used'] == old['pairs_used']
-    nb, ob = new['sample_level']['bucket_rates'], old['bucket_rates']
-    same_rates = all(abs(nb.get(k,0)-ob.get(k,0)) < 1e-9 for k in set(nb)|set(ob))
+    nb_, ob_ = new['sample_level']['bucket_rates'], old['sample_level']['bucket_rates']
+    same_rates = all(abs(nb_.get(k,0)-ob_.get(k,0)) < 1e-9 for k in set(nb_)|set(ob_))
     ok = same_pairs and same_rates
     if not ok: drift.append(m)
-    print(f'{m:22s} {old["pairs_used"]:>8d} -> {new["pairs_used"]:<8d} '
-          f'{"identical" if same_rates else "CHANGED":14s} '
+    print(f'{m:22s} {old["pairs_used"]:>8d} -> {new["pairs_used"]:<12d} '
+          f'{"identical" if same_rates else "CHANGED":11s} '
           f'{"reproduced" if ok else "*** DRIFT ***"}')
 print()
+if pending:
+    print('still to re-run:', pending, '-> re-run section 3 (OVERWRITE=False resumes).')
 if drift:
     print('*** E2 did NOT reproduce for:', drift)
-    print('*** The pipeline is not deterministic run-to-run. Do not treat any of this')
-    print('*** as confirmatory until the source of the drift is found.')
-else:
+    print('*** The pipeline is not deterministic run-to-run. Do NOT treat anything as')
+    print('*** confirmatory until the source of the drift is found. Report this.')
+elif not pending:
     print('E2 reproduced exactly. The recorded pair list is now the single source of')
     print('truth, and E3 will measure causality on exactly these pairs.')
 """))
