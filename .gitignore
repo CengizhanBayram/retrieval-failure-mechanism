@@ -19,6 +19,19 @@ results/**
 # Donor activation stores (large binary)
 *.npz
 
+# Result JSONs downloaded from Drive into the repo tree (e.g. notebooks/) must
+# never be committed — results are machine-produced and live outside git (§3).
+# These patterns match the artifact FILES, not the scripts (*.py) or notebooks
+# (*.ipynb) that share the experiment names.
+e1_surface_*.json
+e1_breaking_cells_*.json
+e2_signatures_*.json
+e3_causal_*.json
+e4_families.json
+e5_robustness_*.json
+gate_eager_reference.json
+*.pre_pairfix
+
 # OS
 .DS_Store
 Thumbs.db
