@@ -891,9 +891,22 @@ elif not pending:
 # 10 — EXPLORATORY extended k-sweep (redundancy vs dissociation) + E4
 # ---------------------------------------------------------------------------
 
-def nb_10_ksweep() -> dict:
+_PARALLEL_NOTE = (
+    "\n\n> ### PARALLEL SPLIT — this session owns: {these}\n"
+    "> Its sibling **{sibling}** owns the rest. Launch the two in **separate Colab "
+    "sessions at the same time** to halve wall-clock. They write disjoint model "
+    "checkpoints, so they never touch each other's files. **Do not also run the "
+    "full-panel notebook 10 while these run** — it would overlap both. E4 stays "
+    "parked in every split session until the *whole* panel is complete; run it from "
+    "whichever session finishes last."
+)
+
+
+def nb_10_ksweep(subset=None, title_n="10", parallel_note="") -> dict:
+    # Embed the model list as a LITERAL (the notebook runtime has no `MODELS` name).
+    subset_expr = json.dumps(subset if subset is not None else MODELS)
     cells = [md(
-        "# 10 · Extended k-sweep — **EXPLORATORY**  ·  needs A100\n"
+        f"# {title_n} · Extended k-sweep — **EXPLORATORY**  ·  needs A100\n"
         "> ### Status: post-hoc, result-driven extension. NOT pre-registered.\n"
         "> The pre-registered primary sweep is **k ∈ {1, 5, 10}**. k ∈ {20, 30} was "
         "added *after* seeing that the curves had not saturated. Whatever comes out — "
@@ -911,8 +924,18 @@ def nb_10_ksweep() -> dict:
         "its k=10 set was 10 arbitrary members of a 13-way tie — its k=10 null was never "
         "interpretable. k=20/30 covers the whole tied block.\n\n"
         "**Prerequisite: notebook 09.** E3 reads E2's recorded pair list and will abort "
-        "without it.")]
+        "without it." + parallel_note)]
     cells += setup_cells()
+    cells.append(md(
+        "## 0) Which models this session owns\n"
+        "`MODELS_SUBSET` is the list of models **this** notebook will sweep. To run the "
+        "k-sweep across several Colab sessions at once, give each session a **disjoint** "
+        "subset — two sessions sweeping the *same* model would write the same checkpoint "
+        "files and corrupt each other. Models already complete (current E3 with all five "
+        "k) are skipped regardless, so an overlap of *finished* models is harmless; it is "
+        "an overlap of *unfinished* ones that must be avoided."))
+    cells.append(code("MODELS_SUBSET = %s\nprint('this session sweeps:', MODELS_SUBSET)"
+                      % subset_expr))
     cells.append(md("## 1) shell_share must match the grid E1/E2 used (E3 rebuilds probes)"))
     cells.append(SHELL_SHARE_CELL)
     cells.append(md("## 2) Preconditions: extended k_list live, and E2 recorded its pairs"))
@@ -961,10 +984,10 @@ def _e3_current(key):
         return False
     return d['provenance'].get('pairs_source') == 'e2.pairs_by_cell'
 
-_PANEL = %(panel)s
+_PANEL = MODELS_SUBSET
 print('already complete:', [m for m in _PANEL if _e3_current(m)] or 'none')
 print('to run          :', [m for m in _PANEL if not _e3_current(m)])
-""" % {"panel": json.dumps(MODELS)}))
+"""))
     cells.append(code(r"""
 import os, time, gc, torch
 # A single model's k-sweep can outlast a whole session, so the standard per-model
@@ -999,8 +1022,21 @@ for key in [m for m in _PANEL if not _e3_current(m)]:
 remaining = [m for m in _PANEL if not _e3_current(m)]
 print('\nstill incomplete:', remaining or 'none — the sweep is finished.')
 """ % {"cap": HARD_CAP_H}))
-    cells.append(md("## 4) E4 — family table + causal decision"))
-    cells.append(code("run(['scripts/e4_families.py', '--models'] + %s)" % json.dumps(MODELS)))
+    cells.append(md(
+        "## 4) E4 — family table + causal decision (runs only when the FULL panel is done)\n"
+        "E4's authoritative BH is over **all** {N models × 2 directions}, so it must not "
+        "run on a partial panel. When several sessions split the sweep, this cell no-ops "
+        "until every model is complete — run it (here, or notebook 07) from whichever "
+        "session finishes last."))
+    cells.append(code(r"""
+FULL_PANEL = %(full)s
+notdone = [m for m in FULL_PANEL if not _e3_current(m)]
+if notdone:
+    print('E4 skipped — full panel not complete. Still need:', notdone)
+    print('Re-run this cell from the session that finishes last.')
+else:
+    run(['scripts/e4_families.py', '--models'] + FULL_PANEL)
+""" % {"full": json.dumps(MODELS)}))
     cells.append(md("## 5) The saturation curves, with the head-set tie flag"))
     cells.append(code(r"""
 import json, os
@@ -1170,6 +1206,20 @@ def main():
         "08_A100_e3_backfill_e4.ipynb": nb_08_e3_backfill(),
         "09_A100_e2_rerun_record_pairs.ipynb": nb_09_e2_pairs(),
         "10_A100_e3_ksweep_EXPLORATORY.ipynb": nb_10_ksweep(),
+        # Parallel split of the k-sweep: run 10a and 10b in TWO Colab sessions at
+        # once. Their MODELS_SUBSETs are disjoint (their union is the panel minus
+        # llama+gemma, which are already complete and auto-skip). Do NOT also run
+        # the full-panel notebook 10 alongside these — the three would overlap.
+        "10a_A100_e3_ksweep_GROUP1.ipynb": nb_10_ksweep(
+            subset=["mistral_7b_instruct", "qwen25_7b_instruct", "olmo2_7b_instruct"],
+            title_n="10a",
+            parallel_note=_PARALLEL_NOTE.format(these="mistral, qwen2.5-7b, olmo2",
+                                                sibling="10b (phi3.5, qwen2.5-3b)")),
+        "10b_A100_e3_ksweep_GROUP2.ipynb": nb_10_ksweep(
+            subset=["phi35_mini", "qwen25_3b_instruct"],
+            title_n="10b",
+            parallel_note=_PARALLEL_NOTE.format(these="phi3.5, qwen2.5-3b",
+                                                sibling="10a (mistral, qwen2.5-7b, olmo2)")),
         "11_A100_e5_robustness.ipynb": nb_11_e5(),
     }
     # Drop the pre-GPU-tag filenames so the folder never shows two copies.
