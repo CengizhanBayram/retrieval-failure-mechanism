@@ -1012,21 +1012,28 @@ for m in %(models)s:
     if not os.path.exists(p): continue
     d = json.load(open(p))
     ks, ties = d['k'], d.get('head_set_ties', {})
-    row, vals = [], []
+    flip = {}
+    row = []
     for k in KS:
         v = (ks.get(k) or {}).get('break', {}).get('flip_rate')
         row.append('  -  ' if v is None else f'{v:.3f}')
-        if v is not None: vals.append(v)
+        if v is not None: flip[k] = v
     tie_ks = ','.join(k for k in KS if (ties.get(k) or {}).get('arbitrary')) or '-'
-    trend = ''
-    if len(vals) >= 2:
-        trend = 'RISING' if vals[-1] - vals[-2] > 0.02 else 'FLAT'
+    # The exploratory question is whether extending PAST k=10 raises the flip rate,
+    # so compare the best of {k20, k30} to k10 — not the last two points, which can
+    # call a curve "flat" only because k30 barely edged k20 after a big k10->k20 jump.
+    if '20' in flip and '30' in flip and '10' in flip:
+        delta = max(flip['20'], flip['30']) - flip['10']
+        trend = 'RISES past k10' if delta > 0.02 else 'flat past k10'
+    else:
+        trend = 'incomplete: need k20,30'
     print(f'{m:22s} ' + ' '.join(f'{r:<7s}' for r in row) + f' {tie_ks:12s}  {trend}')
 print()
-print('RISING at the top end  => the k=10 null was a k-ceiling artifact (redundancy).')
-print('FLAT while others rise => mechanism-vs-causality dissociation.')
-print('tie-broken k           => at that k the head SET was decided by sort order, not')
-print('                          score; a null there says nothing about the heads.')
+print('RISES past k10 => the k=10 null was a k-ceiling artifact (redundancy).')
+print('flat past k10  => mechanism-vs-causality dissociation.')
+print('tie-broken k   => at that k the head SET was decided by (layer,head) sort order,')
+print('                  not score; a null there says nothing about the heads. Read the')
+print('                  trend from the LOWEST NON-tie-broken k upward.')
 print('\nEXPLORATORY — report as such.')
 """ % {"models": json.dumps(MODELS)}))
     return notebook(cells)
