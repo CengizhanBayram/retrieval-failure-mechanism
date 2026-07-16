@@ -892,13 +892,13 @@ elif not pending:
 # ---------------------------------------------------------------------------
 
 _PARALLEL_NOTE = (
-    "\n\n> ### PARALLEL SPLIT — this session owns: {these}\n"
-    "> Its sibling **{sibling}** owns the rest. Launch the two in **separate Colab "
-    "sessions at the same time** to halve wall-clock. They write disjoint model "
+    "\n\n> ### PARALLEL SPLIT — this session owns: {these}  ·  {gpu}\n"
+    "> Its siblings **{siblings}** own the rest. Launch the groups in **separate "
+    "Colab sessions at the same time** to cut wall-clock. They write disjoint model "
     "checkpoints, so they never touch each other's files. **Do not also run the "
-    "full-panel notebook 10 while these run** — it would overlap both. E4 stays "
-    "parked in every split session until the *whole* panel is complete; run it from "
-    "whichever session finishes last."
+    "full-panel notebook 10 while these run** — it would overlap all of them. E4 "
+    "stays parked in every split session until the *whole* panel is complete; run it "
+    "from whichever session finishes last."
 )
 
 
@@ -1206,20 +1206,30 @@ def main():
         "08_A100_e3_backfill_e4.ipynb": nb_08_e3_backfill(),
         "09_A100_e2_rerun_record_pairs.ipynb": nb_09_e2_pairs(),
         "10_A100_e3_ksweep_EXPLORATORY.ipynb": nb_10_ksweep(),
-        # Parallel split of the k-sweep: run 10a and 10b in TWO Colab sessions at
-        # once. Their MODELS_SUBSETs are disjoint (their union is the panel minus
-        # llama+gemma, which are already complete and auto-skip). Do NOT also run
-        # the full-panel notebook 10 alongside these — the three would overlap.
+        # Three-way parallel split of the k-sweep: run 10a, 10b and 10c in THREE
+        # Colab sessions at once. Their MODELS_SUBSETs are disjoint (union = the
+        # panel minus the already-complete llama+gemma). phi3.5 is isolated in 10c
+        # because it is the only remaining eager model (needs A100 80 GB); the four
+        # sdpa models split 2+2 across 40 GB sessions. Do NOT also run the
+        # full-panel notebook 10 alongside these — it would overlap all three.
         "10a_A100_e3_ksweep_GROUP1.ipynb": nb_10_ksweep(
-            subset=["mistral_7b_instruct", "qwen25_7b_instruct", "olmo2_7b_instruct"],
+            subset=["mistral_7b_instruct", "olmo2_7b_instruct"],
             title_n="10a",
-            parallel_note=_PARALLEL_NOTE.format(these="mistral, qwen2.5-7b, olmo2",
-                                                sibling="10b (phi3.5, qwen2.5-3b)")),
+            parallel_note=_PARALLEL_NOTE.format(
+                these="mistral, olmo2", gpu="A100 40 GB",
+                siblings="10b (qwen2.5-7b, qwen2.5-3b) and 10c (phi3.5)")),
         "10b_A100_e3_ksweep_GROUP2.ipynb": nb_10_ksweep(
-            subset=["phi35_mini", "qwen25_3b_instruct"],
+            subset=["qwen25_7b_instruct", "qwen25_3b_instruct"],
             title_n="10b",
-            parallel_note=_PARALLEL_NOTE.format(these="phi3.5, qwen2.5-3b",
-                                                sibling="10a (mistral, qwen2.5-7b, olmo2)")),
+            parallel_note=_PARALLEL_NOTE.format(
+                these="qwen2.5-7b, qwen2.5-3b", gpu="A100 40 GB",
+                siblings="10a (mistral, olmo2) and 10c (phi3.5)")),
+        "10c_A100_e3_ksweep_GROUP3.ipynb": nb_10_ksweep(
+            subset=["phi35_mini"],
+            title_n="10c",
+            parallel_note=_PARALLEL_NOTE.format(
+                these="phi3.5 (eager)", gpu="A100 80 GB — phi OOMs 40 GB",
+                siblings="10a (mistral, olmo2) and 10b (qwen2.5-7b, qwen2.5-3b)")),
         "11_A100_e5_robustness.ipynb": nb_11_e5(),
     }
     # Drop the pre-GPU-tag filenames so the folder never shows two copies.
