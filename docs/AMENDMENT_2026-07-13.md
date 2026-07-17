@@ -242,8 +242,13 @@ it says we patched an arbitrary subset of the indistinguishable ones.
 
 **Consequence.** The earlier reading — *"gemma2 is the M1-silence model whose
 retrieval heads are not causal"* — is **withdrawn**. It was premature, exactly as
-flagged. Gemma2's causal status is **undetermined pending the k = 20/30
-extension** (§H), which covers the whole tied block.
+flagged. **Resolved by the k = 20/30 extension** (§H), which covers the whole tied
+block: gemma2's break is BH-significant from k = 10 (its first non-tie-confounded k;
+p ≈ 1e-4 at k = 20/30) but **never clears the 20 pp margin** (break flip peaks ~0.12
+at k = 30). So gemma2 is *not* causally inert — it is **significant-but-sub-margin**,
+like llama3.1, and it must be read only from k ≥ 20 (past the tie). Its distinctive
+non-M2 profile is *plausibly related to* its softcap + sliding-window attention, but
+that link is a conjecture, not tested here.
 
 **Fix.** `detect.boundary_tie(k)` reports, for each k, the score at the cut, how
 many heads tie it, how many were admitted and how many excluded, and a boolean
@@ -292,7 +297,7 @@ without a commit is a pilot.
 | F (M2 floor) | **frozen at 0.10**; alternative floor → E5 sensitivity only |
 | H (k=20/30) | **exploratory** |
 | I (pair set) | code fixed; requires the config-identical E2 re-run (nb 09) |
-| J (gemma ties) | diagnostic added; gemma2 causal status **undetermined** |
+| J (gemma ties) | diagnostic added; gemma2 resolved — significant-but-sub-margin, read from k≥20 |
 | K (gate) | **passed**, now persisted |
 
 Order: **this amendment is committed first**, then E5 (Wu, olmo + phi first), then

@@ -6,6 +6,15 @@
 > such. Companion documents: `AMENDMENT_2026-07-13.md` (status of each run),
 > `LIMITATIONS.md` (caveats). Measurement/record — the paper argues significance.
 
+**Bottom line.** Distractor-capture (M2) is the common failure *mechanism* (6/7),
+but the *causal weight* of the retrieval heads is **graded by model and uncorrelated
+with the mechanism strength** — from few-heads-sufficient (qwen2.5-3b, k=5) through
+many-heads-redundant (mistral, only at k=30) to statistically-significant-but-below-
+the-20 pp-margin (llama3.1). Every model's break is BH-significant (no model is
+causally inert); what differs is *how much* you must patch before it matters, and
+the M2 rate does not predict it. That gap — visible signature vs graded causal
+weight — is what profiling (which measures only the signature) cannot see.
+
 **Panel (7 instruct models, 6 families).** llama3.1-8b, qwen2.5-7b, gemma2-9b,
 mistral-7b-v0.3, olmo2-7b, phi3.5-mini, qwen2.5-3b. Difficulty axis: `shell_share`
 (distractor reuses the needle's ADJ or NOUN). Detector: Part-2 argmax heads, seed
@@ -89,49 +98,89 @@ The raw flip rises with k for **all** seven. But the raw flip is not the effect 
 E4 subtracts the random-control flip and requires the ≥ 20 pp margin **and** BH
 significance.
 
-**Causal `break` effect** (`effect = bh_rejected AND margin_met`), by the smallest
-k at which it holds:
+**Two things must be read separately** and the earlier draft conflated them:
+* **BH significance** — is the break flip distinguishable from the random control
+  at all? (`bh_rejected`)
+* **The pre-registered `effect` gate** — is it *also* ≥ 20 pp above the control?
+  (`effect = bh_rejected AND margin_met`)
 
-| model | first k with break effect | verdict |
-|---|---|---|
-| qwen2.5-3b | **k = 5** | causal (pre-registered) |
-| olmo2 | **k = 10** | causal (pre-registered) |
-| phi3.5 | **k = 10** | causal (pre-registered) |
-| qwen2.5-7b | **k = 30** (exploratory) | redundant-causal |
-| mistral | **k = 30** (exploratory) | redundant-causal |
-| llama3.1 | never (through k = 30) | no causal effect |
-| gemma2 | never (through k = 30) | no causal effect |
+The margin exists precisely to separate "real but small" from "large enough to be
+the bottleneck". Reading `bh_rejected` as the causal-weight axis:
 
-* **Pre-registered result (k ≤ 10): 3/7 causal** — qwen2.5-3b, olmo2, phi3.5.
-* **Exploratory extension (k ≤ 30): +2** — mistral and qwen2.5-7b cross the margin
-  only at k = 30. Their k ≤ 10 "null" was **under-dosing** (they have 82 / 50
-  retrieval heads; patching 10 was too few) — a **redundancy / distributed-
-  retrieval** result, reported as exploratory.
-* **llama3.1 and gemma2 never meet the margin**, even patching 30 heads.
+| model | break BH-significant from | clears 20 pp margin at | causal weight |
+|---|---|---|---|
+| qwen2.5-3b | k = 1 | **k = 5** | large — few heads suffice |
+| phi3.5 | k = 5 | **k = 10** | large |
+| olmo2 | k = 5 | **k = 10** | large |
+| qwen2.5-7b | k = 5 | **k = 30** (exploratory) | redundant — many heads |
+| mistral | k = 5 | **k = 30** (exploratory) | redundant — many heads |
+| llama3.1 | **k = 5** | never (≤ 0.10 at k=30) | **significant but sub-margin — weak** |
+| gemma2 | **k = 10** (tie-confounded; clean from k = 20) | never | **significant but sub-margin — weak** |
 
-The `repair` direction (patch a failure recipient with a success donor → does it
-recover?) is **weak and inconsistent** — sparse effects (qwen2.5-3b at k≤10,
-qwen2.5-7b/olmo2 at mid-k) that *fall* at high k. **Break is the robust causal
-signal** and should lead.
+* **Every model's break is BH-significant** by k = 5–10 (llama and gemma included,
+  p ≈ 1e-4): patching the retrieval heads measurably disrupts retrieval in all
+  seven, distinct from the random control. **No model is causally inert.**
+* What varies is the **causal weight** — how much you must patch before the effect
+  clears the 20 pp margin, and whether it ever does:
+  * **large** (few heads suffice): qwen2.5-3b (k=5), phi3.5 & olmo2 (k=10) —
+    pre-registered.
+  * **redundant** (needs many heads): mistral & qwen2.5-7b clear the margin only at
+    k = 30 — **exploratory** (k > 10, post-hoc; their k ≤ 10 result was
+    under-dosing, they have 82 / 50 retrieval heads).
+  * **weak / sub-margin**: llama3.1 and gemma2 are BH-significant but never clear
+    20 pp (llama peaks at ~10 pp at k = 30). The effect is **real but small**, not
+    absent.
+* **The pre-registered decision (k ≤ 10) is therefore binary**: 3/7 clear the margin
+  (qwen2.5-3b, olmo2, phi3.5); the other four are significant-but-sub-margin. The
+  redundancy regime (mistral, qwen2.5-7b at k = 30) is an **exploratory refinement**
+  from the k-extension, not part of the pre-registered result.
+
+**Break vs repair — necessity ≠ sufficiency.** The `break` flip rises monotonically
+with k for every model; the `repair` flip (inject a success donor into a failure)
+is sparse and **collapses at high k** (qwen2.5-3b repair 0.33 at k=10 → 0.04 at
+k=30). Patching the retrieval heads is enough to *disrupt* a working retrieval
+(break); it is generally **not** enough to *restore* a broken one (repair). Break is
+the robust causal signal and leads; the break/repair asymmetry is the empirical body
+of the necessity-vs-sufficiency distinction.
 
 ---
 
-## 4. The three regimes (interpretive synthesis — the paper's spine)
+## 4. The synthesis — mechanism strength does not predict causal weight
 
-Combining the mechanism (§2) with the causal decision (§3):
+Crossing the mechanism (§2, the M2 rate) with the causal weight (§3, how much you
+must patch to clear the margin):
 
-| regime | models | mechanism (E2) | causality (E4) |
+| model | M2 rate | causal weight | pre-registered? |
 |---|---|---|---|
-| **1 · mechanism = cause** | qwen2.5-3b, olmo2, phi3.5 | M2-dominant | causal at low k (pre-registered) |
-| **2 · redundant-causal** | mistral, qwen2.5-7b | M2-dominant (mistral 0.84!) | causal only at k = 30 (exploratory) — distributed across many heads |
-| **3 · dissociation** | llama3.1 | **M2-dominant (0.62)** | **no causal effect through k = 30** — the M2 signature is a *correlate*, not the bottleneck |
-| **4 · non-M2** | gemma2 | residual/M1 (M2 only 0.14) | no causal effect; head-set tie-confounded at low k |
+| qwen2.5-3b | 0.73 | large — 5 heads suffice | ✔ causal |
+| olmo2 | 0.62 | large — 10 heads | ✔ causal |
+| phi3.5 | 0.57 | large — 10 heads | ✔ causal |
+| mistral | **0.84** | redundant — 30 heads | ✗ exploratory |
+| qwen2.5-7b | 0.62 | redundant — 30 heads | ✗ exploratory |
+| llama3.1 | 0.62 | **weak — significant but sub-margin** | ✔ (sub-margin) |
+| gemma2 | 0.14 | weak — significant, sub-margin, tie-confounded low-k | ✔ (sub-margin) |
 
-The headline is the **spectrum**, not a single verdict: retrieval failure is causal
-in some models, causal-but-redundant in others, and — for **llama3.1** — a genuine
-**mechanism-without-causality dissociation** (distractor-capture is visible but
-patching the retrieval heads does not break retrieval). This is the contribution
-over profiling work that measures only the correlation.
+**The central result is a dissociation between two magnitudes, not between presence
+and absence.** The M2 rate tells you nothing about the causal architecture:
+
+* mistral shows the **strongest** mechanism (0.84 M2) yet its retrieval is the most
+  **redundant** (needs 30 heads);
+* llama3.1 shows a **dominant** mechanism (0.62 M2) yet the **weakest** causal weight
+  (significant but never clears 20 pp);
+* qwen2.5-3b shows a comparable mechanism (0.73 M2) but the **strongest** causal
+  weight (5 heads suffice).
+
+So "the retrieval heads attend the distractor" (the profiling observable) does not
+predict "patching them matters, and how much" (the causal fact). That gap — visible
+signature vs graded causal weight, **uncorrelated across the panel** — is the
+contribution over profiling work that measures only the correlation. llama3.1 is the
+sharpest case: **maximal visible signature, minimal causal weight**, yet still
+BH-significant — a *strength* dissociation, not a mechanism-without-causality one.
+
+gemma2 is the one architecture that is not M2-dominant at all (residual/M1); its
+causal signal appears only at post-tie k (§D) and stays sub-margin. Its distinct
+behaviour is **plausibly related to** its softcap + sliding-window attention, but
+that link is not tested here and is stated as conjecture, not result.
 
 ---
 
@@ -180,10 +229,14 @@ the primary detector check and is complete.
 | claim | status |
 |---|---|
 | M2-dominant failure in 6/7 (argmax heads) | confirmatory |
-| 3/7 causal at k ≤ 10 (qwen2.5-3b, olmo2, phi3.5) | **confirmatory** (pre-registered) |
-| +2 causal at k = 30 (mistral, qwen2.5-7b) → redundancy | **exploratory** (k > 10, post-hoc) |
-| llama3.1 mechanism-without-causality dissociation | confirmatory (no effect through the pre-registered k, and none at k=30) |
-| gemma2 non-M2 / not causal | confirmatory, **but** read only past its head-set tie (k ≥ 20; §D) |
+| every model's break is BH-significant by k = 5–10 (no model causally inert) | confirmatory |
+| 3/7 clear the 20 pp margin at k ≤ 10 (qwen2.5-3b, olmo2, phi3.5) | **confirmatory** (pre-registered) |
+| the other 4/7 are BH-significant but **sub-margin** at k ≤ 10 | **confirmatory** (pre-registered decision is binary) |
+| mistral & qwen2.5-7b clear the margin at k = 30 → redundancy | **exploratory** (k > 10, post-hoc) |
+| llama3.1: **dominant mechanism, weakest causal weight** (significant, never clears 20 pp) — a *strength* dissociation | confirmatory |
+| **M2 rate does not predict causal weight** (uncorrelated across the panel) | confirmatory (the central claim) |
+| gemma2 non-M2-dominant; causal signal only post-tie (k ≥ 20; §D) and sub-margin | confirmatory |
+| gemma2 behaviour ↔ softcap/sliding-window | **conjecture** — not tested |
 | M2 detector-robust | **not supported** — Qwen-only; argmax-specific for 5/7 (§F) |
 
 ---
