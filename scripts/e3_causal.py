@@ -272,16 +272,22 @@ def main(argv=None):
     # This is a pure speedup, not a change of method.
     donors_sp: dict = {}
     donors_fp: dict = {}
-    for i, (_h, _si, sp, _fi, fp) in enumerate(pairs_flat, start=1):
-        need_sp = set(heads_max) | {lh for k in k_list for lh in rheads_r[(i, k)]}
-        need_fp = set(heads_max) | {lh for k in k_list for lh in rheads_b[(i, k)]}
-        donors_sp[i] = patching.capture_donor_z(model, tokenizer, sp.input_ids,
-                                                sorted(need_sp), decoding_cfg)
-        donors_fp[i] = patching.capture_donor_z(model, tokenizer, fp.input_ids,
-                                                sorted(need_fp), decoding_cfg)
-    log.info("donors captured for %d pairs (%d prompt forwards; the per-(pair,k) "
-             "path would have needed %d).", len(pairs_flat), 2 * len(pairs_flat),
-             4 * len(k_list) * len(pairs_flat))
+    # If every k is already checkpointed the k loop only reloads from disk and never
+    # touches a donor, so re-capturing them (a full prompt forward per pair — ~1 h
+    # for a model like phi) would be pure waste on a completed model.
+    if all(ckpt.is_done(f"k{k}") for k in k_list):
+        log.info("all %d k already checkpointed; skipping donor capture.", len(k_list))
+    else:
+        for i, (_h, _si, sp, _fi, fp) in enumerate(pairs_flat, start=1):
+            need_sp = set(heads_max) | {lh for k in k_list for lh in rheads_r[(i, k)]}
+            need_fp = set(heads_max) | {lh for k in k_list for lh in rheads_b[(i, k)]}
+            donors_sp[i] = patching.capture_donor_z(model, tokenizer, sp.input_ids,
+                                                    sorted(need_sp), decoding_cfg)
+            donors_fp[i] = patching.capture_donor_z(model, tokenizer, fp.input_ids,
+                                                    sorted(need_fp), decoding_cfg)
+        log.info("donors captured for %d pairs (%d prompt forwards; the per-(pair,k) "
+                 "path would have needed %d).", len(pairs_flat), 2 * len(pairs_flat),
+                 4 * len(k_list) * len(pairs_flat))
 
     # ---- Per-k sweep, CHECKPOINTED ------------------------------------------
     # E3 is the heaviest experiment and a k-sweep of a large panel does not fit in

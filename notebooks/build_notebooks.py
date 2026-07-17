@@ -982,7 +982,10 @@ def _e3_current(key):
         d = json.load(fh)
     if not K_WANTED <= set(d.get('k', {})):
         return False
-    return d['provenance'].get('pairs_source') == 'e2.pairs_by_cell'
+    prov = d['provenance']
+    # provenance stamps custom fields under `extra`; tolerate both just in case.
+    src = prov.get('extra', {}).get('pairs_source') or prov.get('pairs_source')
+    return src == 'e2.pairs_by_cell'
 
 _PANEL = MODELS_SUBSET
 print('already complete:', [m for m in _PANEL if _e3_current(m)] or 'none')
