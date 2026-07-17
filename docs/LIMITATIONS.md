@@ -118,14 +118,40 @@ without `--tag`.
 
 ---
 
-## F. Retrieval-head set comes from one detector (argmax) — checked, not assumed
+## F. The M2 signature is argmax-head-specific for 5/7 models (detector-dependent)
 
-**What.** The head set is Part-2's **argmax** detector at seed 42; Part-3 never
-re-detects.
+**What.** The head set is Part-2's **argmax** (attention-based) detector at seed 42;
+Part-3 never re-detects. The **E5 `wu` variant** re-runs E2 on the Wu/copy-score
+head list to test whether the mechanism survives a different definition of
+"retrieval head".
 
-**How addressed.** The **E5 `wu` variant** re-runs E2 on the Wu/copy-head list; if
-the mechanism and its causal signature reproduce, they are not an artifact of the
-detector choice. (Detector-independence result: to be filled in from the E5 run.)
+**Result (E5 `wu`, all 7 models — sample-level dominant bucket, argmax → copy).**
+
+| model | argmax M2 | copy M2 | copy dominant | M2 detector-robust? |
+|---|---|---|---|---|
+| qwen2.5-3b | 0.73 | 0.66 | m2_capture | **yes** |
+| qwen2.5-7b | 0.62 | 0.56 | m2_capture | **yes** |
+| mistral | 0.84 | 0.20 | residual (0.40) | no |
+| olmo2 | 0.62 | 0.13 | residual (0.39) | no |
+| phi3.5 | 0.57 | 0.26 | residual (0.38) | no |
+| llama3.1 | 0.62 | ~0 | m1_silence (1.00) | no |
+| gemma2 | 0.14 | 0.04 | m1_silence (0.94) | no |
+
+**Consequence.** The distractor-capture (M2) signature is **detector-robust only for
+the Qwen family** (2/7). For the other five it is **specific to the argmax
+(attention-based) heads**: the copy-score heads instead fail by **residual
+attenuation** (mistral, olmo2, phi3.5) or **silence** (llama3.1, gemma2). So "when a
+model fails, its retrieval heads show distractor-capture" is a property of *how the
+retrieval head is defined*, for most of the panel — it does not generalise across
+detector choices.
+
+**How this bounds the claims.** The **causal** result (E3/E4) is measured on argmax
+heads, where mechanism (M2) and causality co-occur, so it is internally coherent and
+**unaffected**. What the `wu` check qualifies is the *mechanism* half: the M2 label
+belongs to the argmax head population, not to "retrieval heads" defined arbitrarily.
+This heterogeneity (attention-argmax heads capture distractors; token-copy heads
+attenuate or fall silent, except in Qwen) is itself reportable, but the
+detector-independence robustness claim is **not** supported and must not be made.
 
 ---
 
