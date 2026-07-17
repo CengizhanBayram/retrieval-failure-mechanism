@@ -1189,6 +1189,69 @@ print('M2 rate is floor-sensitive, and that belongs in the paper as a limitation
     return notebook(cells)
 
 
+# ---------------------------------------------------------------------------
+# 12 — E2 reproduction check (amendment §I) — CPU only, no model load
+# ---------------------------------------------------------------------------
+
+def nb_repro_check() -> dict:
+    cells = [md(
+        "# 12 · E2 reproduction check  ·  **CPU (no GPU)**\n"
+        "The last open verification (amendment §I). The E2 pair-recording re-run was "
+        "config-identical to the run that produced the pre-fix artifacts — same "
+        "pre-registration, same M2 floor, same seed — so it **must reproduce the "
+        "pre-fix numbers exactly**. This compares each `e2_signatures_{model}.json` "
+        "against its `.pre_pairfix` backup (pairs, bucket rates, and pair-list "
+        "self-consistency).\n\n"
+        "Pure JSON — it loads **no model** and needs **no GPU**. Runs in seconds on a "
+        "plain CPU runtime.\n\n"
+        "**Read the verdict:** every model should say `reproduced`. A `*** DRIFT ***` "
+        "means E2 is not deterministic run-to-run (the adaptive OOM batch-halving in "
+        "the grading pass is the suspect), and nothing may be called confirmatory "
+        "until it is explained.")]
+    cells.append(code(r"""
+# Drive (where rfm_results + the .pre_pairfix backups live)
+import os
+from google.colab import drive
+drive.mount('/content/drive')
+RESULTS_DIR = '/content/drive/MyDrive/rfm_results'
+os.environ['RFM_RESULTS_DIR'] = RESULTS_DIR
+print('Results dir:', RESULTS_DIR)
+"""))
+    cells.append(code(r"""
+# Clone Part-3 only (the script + configs). No Part-1/Part-2, no model weights.
+import os, subprocess
+GITHUB_TOKEN = ""          # ghp_...  (only if the repo is private)
+owner, name, D = 'CengizhanBayram', 'retrieval-failure-mechanism', '/content/rope-part3'
+pub  = f"https://github.com/{owner}/{name}.git"
+auth = f"https://x-access-token:{GITHUB_TOKEN}@github.com/{owner}/{name}.git" if GITHUB_TOKEN else pub
+if not os.path.isdir(D):
+    r = subprocess.run(['git', 'clone', auth, D], capture_output=True, text=True)
+    if r.returncode != 0:
+        raise RuntimeError((r.stderr or r.stdout).replace(GITHUB_TOKEN or '___', '***'))
+    if GITHUB_TOKEN:
+        subprocess.run(['git', '-C', D, 'remote', 'set-url', 'origin', pub])
+else:
+    subprocess.run(['git', '-C', D, 'pull'], capture_output=True, text=True)
+print('ready:', D)
+"""))
+    cells.append(code(r"""
+!pip install -q pyyaml
+"""))
+    cells.append(code(r"""
+# Run the check. Pure JSON, no GPU. Non-zero exit => DRIFT or missing backups.
+import subprocess, sys, os
+p = subprocess.run(
+    [sys.executable, 'scripts/check_e2_repro.py', '--results-dir', os.environ['RFM_RESULTS_DIR']],
+    cwd='/content/rope-part3', capture_output=True, text=True)
+print(p.stdout)
+if p.stderr.strip():
+    print('--- stderr ---\n' + p.stderr)
+print('exit code:', p.returncode,
+      '(0 = all reproduced, 2 = DRIFT, 1 = no backups found)')
+"""))
+    return notebook(cells, gpu=False)
+
+
 def main():
     # Filenames carry the Colab runtime they need, so you never start a 20 h run
     # on the wrong GPU.
@@ -1234,6 +1297,7 @@ def main():
                 these="phi3.5 (eager)", gpu="A100 80 GB — phi OOMs 40 GB",
                 siblings="10a (mistral, olmo2) and 10b (qwen2.5-7b, qwen2.5-3b)")),
         "11_A100_e5_robustness.ipynb": nb_11_e5(),
+        "12_CPU_repro_check.ipynb": nb_repro_check(),
     }
     # Drop the pre-GPU-tag filenames so the folder never shows two copies.
     for stale in NB_DIR.glob("*.ipynb"):
