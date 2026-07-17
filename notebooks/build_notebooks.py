@@ -1118,10 +1118,13 @@ VARIANTS = 'wu'
 # of distractor_mass over distractor_hit failures: p5=0.103 p25=0.154 p50=0.193.
 M2_ALT_FLOOR = 0.15
 
-# olmo + phi carry the causal headline -> check them first. Widen to the full panel
-# once you have seen the per-model cost.
-E5_MODELS = ['olmo2_7b_instruct', 'phi35_mini']
-# E5_MODELS = %(panel)s   # <- the whole panel
+# FULL PANEL by default — models whose variant is already current auto-skip below,
+# so you do not have to edit this to run "the rest". olmo2 + phi3.5 already have a
+# fresh `wu` and will be skipped; the other five run.
+# To parallelise, give each Colab session a DISJOINT slice, e.g.
+#   session A (A100 80 GB): ['gemma2_9b_it']          # the only eager model left
+#   session B (A100 40 GB): the four sdpa models
+E5_MODELS = %(panel)s
 
 print('E5 variants =', VARIANTS, '| models =', E5_MODELS, '| m2 alt floor =', M2_ALT_FLOOR)
 """ % {"panel": json.dumps(MODELS)}))
