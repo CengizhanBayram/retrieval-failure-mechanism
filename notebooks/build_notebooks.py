@@ -1193,6 +1193,96 @@ print('M2 rate is floor-sensitive, and that belongs in the paper as a limitation
 
 
 # ---------------------------------------------------------------------------
+# 13 — full-set patch (llama k=39 + gemma k=77) — EXPLORATORY, decisive
+# ---------------------------------------------------------------------------
+
+def nb_13_fullset() -> dict:
+    cells = [md(
+        "# 13 · Full-set patch — llama3.1 k=39, gemma2 k=77  ·  **EXPLORATORY**  ·  needs A100 80 GB\n"
+        "> ### The decisive run for the reviewer's under-dosing objection.\n"
+        "llama3.1 and gemma2 are BH-significant on `break` but stay **below the 20 pp "
+        "margin** through k=30. The objection: *maybe their null is under-dosing — we "
+        "only patched 30 of their 39 / 77 detected heads.* This patches the **entire "
+        "detected set** and asks whether the effect still stays sub-margin.\n\n"
+        "* still sub-margin at the full set → **dissociation confirmed** (weak but real "
+        "causal weight); the headline holds.\n"
+        "* clears the margin at the full set → the model moves to the **redundancy** "
+        "regime; the headline shifts from \"dissociation\" to \"redundancy spectrum\".\n\n"
+        "**How it stays cheap.** `--extra-k` appends the full-set k on the CLI, not in "
+        "`e3.yaml`, so the checkpoint fingerprint is unchanged: k=1..30 resume from "
+        "their checkpoints and only k=39 / k=77 is computed. gemma2 needs the 80 GB "
+        "runtime (eager). preregistration.yaml is untouched; the full-set k is "
+        "**exploratory**.")]
+    cells += setup_cells()
+    cells.append(md("## 1) shell_share must match the grid E1/E2/E3 used"))
+    cells.append(SHELL_SHARE_CELL)
+    cells.append(md("## 2) Preconditions — the pulled code has --extra-k, and the head counts"))
+    cells.append(code(r"""
+import subprocess, sys, json, os
+# the clone must be new enough to carry --extra-k
+h = subprocess.run([sys.executable, 'scripts/e3_causal.py', '--help'],
+                   cwd='/content/rope-part3', capture_output=True, text=True).stdout
+assert '--extra-k' in h, 'pulled code is too old — Cell 2 must clone/pull the latest repo (needs --extra-k)'
+
+# verify the FULL detected head count per model (do not assume 39 / 77)
+sys.path.insert(0, '/content/rope-part3/src'); sys.path.insert(0, '/content/rope-part3/scripts')
+from failure_mech import detect, panel as P
+import _common as C
+paths = C.load_paths_cfg()
+for key in ['llama31_8b_instruct', 'gemma2_9b_it']:
+    det = detect.load_detection(P.detection_dir(paths), P.resolve_model_key(paths, key),
+                                int(paths['detection_artifacts']['seed']))
+    print(f'{key:22s} detected argmax heads = {len(det._ranked("argmax"))}')
+print('\nUse --extra-k = that number (39 for llama, 77 for gemma). Larger would be padding, which is refused.')
+"""))
+    cells.append(md("## 3) llama3.1 — full set (k = 39).  Resumes k=1..30; only k=39 computes."))
+    cells.append(code(
+        "run(['scripts/e3_causal.py', '--model', 'llama31_8b_instruct', '--extra-k', '39'])"))
+    cells.append(md("## 4) gemma2 — full set (k = 77).  **80 GB runtime** (eager)."))
+    cells.append(code(
+        "run(['scripts/e3_causal.py', '--model', 'gemma2_9b_it', '--extra-k', '77'])"))
+    cells.append(md("## 5) E4 — re-run so the authoritative BH covers k=39 / k=77"))
+    cells.append(code("run(['scripts/e4_families.py', '--models'] + %s)" % json.dumps(MODELS)))
+    cells.append(md("## 6) The verdict — does the full set clear the 20 pp margin?"))
+    cells.append(code(r"""
+import json, os
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+e4 = json.load(open(f'{RESULTS_DIR}/e4_families.json'))
+cd = e4['causal_decision']
+
+for m, full_k in [('llama31_8b_instruct', '39'), ('gemma2_9b_it', '77')]:
+    p = f'{RESULTS_DIR}/e3_causal_{m}.json'
+    if not os.path.exists(p):
+        print(f'{m}: no E3 output'); continue
+    e3 = json.load(open(p))['k']
+    print(f'\n=== {m}  (full detected set: k={full_k}) — BREAK direction ===')
+    print(f'{"k":>4s} {"break":>7s} {"control":>8s} {"margin":>8s} {"≥20pp":>6s} {"perm p":>9s} {"E4 effect":>10s}')
+    for k in ['10', '20', '30', full_k]:
+        kd = e3.get(k)
+        if not kd:
+            print(f'{k:>4s}   (not computed)'); continue
+        br = kd['break']['flip_rate']
+        ctrl = kd['random_control']['break']['flip_rate']
+        marg = kd['margins']['break']['flip_minus_control']
+        meets = kd['margins']['break']['meets_margin']
+        pv = kd['p_values']['break']
+        eff = cd.get(k, {}).get(m, {}).get('break', {}).get('effect')
+        print(f'{k:>4s} {br:>7.3f} {ctrl:>8.3f} {marg:>+8.3f} {str(meets):>6s} {pv:>9.1e} {str(eff):>10s}')
+    kd = e3.get(full_k)
+    if kd:
+        marg = kd['margins']['break']['flip_minus_control']
+        if kd['margins']['break']['meets_margin']:
+            print(f'>>> {m}: FULL SET CLEARS the 20pp margin (margin={marg:+.3f}) '
+                  f'-> REDUNDANCY, not dissociation. Headline shifts.')
+        else:
+            print(f'>>> {m}: FULL SET still SUB-MARGIN (margin={marg:+.3f}) '
+                  f'-> DISSOCIATION confirmed. Headline holds.')
+print('\nEXPLORATORY (k > 10). Report as such.')
+"""))
+    return notebook(cells)
+
+
+# ---------------------------------------------------------------------------
 # 12 — E2 reproduction check (amendment §I) — CPU only, no model load
 # ---------------------------------------------------------------------------
 
@@ -1301,6 +1391,7 @@ def main():
                 siblings="10a (mistral, olmo2) and 10b (qwen2.5-7b, qwen2.5-3b)")),
         "11_A100_e5_robustness.ipynb": nb_11_e5(),
         "12_CPU_repro_check.ipynb": nb_repro_check(),
+        "13_A100_e3_fullset_llama_gemma.ipynb": nb_13_fullset(),
     }
     # Drop the pre-GPU-tag filenames so the folder never shows two copies.
     for stale in NB_DIR.glob("*.ipynb"):
