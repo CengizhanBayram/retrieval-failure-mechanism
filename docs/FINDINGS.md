@@ -9,11 +9,17 @@
 **Bottom line.** Distractor-capture (M2) is the common failure *mechanism* (6/7),
 but the *causal weight* of the retrieval heads is **graded by model and uncorrelated
 with the mechanism strength** — from few-heads-sufficient (qwen2.5-3b, k=5) through
-many-heads-redundant (mistral, only at k=30) to statistically-significant-but-below-
-the-20 pp-margin (llama3.1). Every model's break is BH-significant (no model is
-causally inert); what differs is *how much* you must patch before it matters, and
-the M2 rate does not predict it. That gap — visible signature vs graded causal
-weight — is what profiling (which measures only the signature) cannot see.
+many-heads-redundant (mistral k=30; gemma2 only at its **full 77-head set**) to
+statistically-significant-but-below-the-20 pp-margin **even when the entire detected
+head set is patched** (llama3.1, 39/39 heads). Every model's break is BH-significant
+(no model is causally inert); what differs is *how much* you must patch before it
+matters, and the M2 rate does not predict it (gemma2 0.14-M2 and mistral 0.84-M2 are
+**both** redundant; llama3.1 0.62-M2 stays sub-margin at the full set; qwen2.5-3b
+0.73-M2 needs 5 heads). That gap — visible signature vs graded causal weight — is
+what profiling (which measures only the signature) cannot see. **The full-set patch
+(exploratory) is decisive against the under-dosing objection: llama3.1 is the unique
+dissociation that survives patching all 39 heads; gemma2 was under-dosed and is
+redundant, not dissociated.**
 
 **Panel (7 instruct models, 6 families).** llama3.1-8b, qwen2.5-7b, gemma2-9b,
 mistral-7b-v0.3, olmo2-7b, phi3.5-mini, qwen2.5-3b. Difficulty axis: `shell_share`
@@ -114,25 +120,32 @@ the bottleneck". Reading `bh_rejected` as the causal-weight axis:
 | olmo2 | k = 5 | **k = 10** | large |
 | qwen2.5-7b | k = 5 | **k = 30** (exploratory) | redundant — many heads |
 | mistral | k = 5 | **k = 30** (exploratory) | redundant — many heads |
-| llama3.1 | **k = 5** | never (≤ 0.10 at k=30) | **significant but sub-margin — weak** |
-| gemma2 | **k = 10** (tie-confounded; clean from k = 20) | never | **significant but sub-margin — weak** |
+| gemma2 | k = 10 (tie-confounded; clean from k=20) | **k = 77 = full set** (exploratory) | redundant — needs the whole set |
+| llama3.1 | **k = 5** | **never — sub-margin even at k = 39 = full set** | **significant but sub-margin — the unique dissociation** |
+
+**Full-set patch (exploratory, `--extra-k`) — the decisive test of the under-dosing
+objection.** Patching the *entire* detected head set for the two sub-margin models:
+
+| model | full set | break flip | control | margin | clears 20 pp? | verdict |
+|---|---|---|---|---|---|---|
+| llama3.1 | k = 39 (all 39) | 0.126 | 0.043 | **+0.083** | **no** | **dissociation — holds** |
+| gemma2 | k = 77 (all 77) | 0.478 | 0.040 | **+0.438** | **yes** | **redundancy — reclassified** |
 
 * **Every model's break is BH-significant** by k = 5–10 (llama and gemma included,
   p ≈ 1e-4): patching the retrieval heads measurably disrupts retrieval in all
   seven, distinct from the random control. **No model is causally inert.**
-* What varies is the **causal weight** — how much you must patch before the effect
-  clears the 20 pp margin, and whether it ever does:
-  * **large** (few heads suffice): qwen2.5-3b (k=5), phi3.5 & olmo2 (k=10) —
-    pre-registered.
-  * **redundant** (needs many heads): mistral & qwen2.5-7b clear the margin only at
-    k = 30 — **exploratory** (k > 10, post-hoc; their k ≤ 10 result was
-    under-dosing, they have 82 / 50 retrieval heads).
-  * **weak / sub-margin**: llama3.1 and gemma2 are BH-significant but never clear
-    20 pp (llama peaks at ~10 pp at k = 30). The effect is **real but small**, not
-    absent.
-* **The pre-registered decision (k ≤ 10) is therefore binary**: 3/7 clear the margin
+* The **full-set patch settles the under-dosing objection decisively**:
+  * **llama3.1** stays sub-margin even patching **all 39 detected heads** (margin
+    +0.083 < 0.20). Its dissociation is **not** an artifact of patching too few
+    heads — it is the **unique genuine dissociation**: maximal visible signature
+    (0.62 M2), causal weight that never reaches threshold.
+  * **gemma2** *was* under-dosed: at its full 77-head set the break flip jumps to
+    0.478 (margin +0.438), clearing the margin decisively. gemma2 is **redundant-
+    causal**, not sub-margin — reclassified out of the dissociation bin.
+* **The pre-registered decision (k ≤ 10) is binary**: 3/7 clear the margin
   (qwen2.5-3b, olmo2, phi3.5); the other four are significant-but-sub-margin. The
-  redundancy regime (mistral, qwen2.5-7b at k = 30) is an **exploratory refinement**
+  redundancy regime (mistral & qwen2.5-7b at k = 30; **gemma2 at the full set**) and
+  the confirmed llama3.1 dissociation at the full set are **exploratory refinements**
   from the k-extension, not part of the pre-registered result.
 
 **Break vs repair — necessity ≠ sufficiency.** The `break` flip rises monotonically
@@ -150,37 +163,44 @@ of the necessity-vs-sufficiency distinction.
 Crossing the mechanism (§2, the M2 rate) with the causal weight (§3, how much you
 must patch to clear the margin):
 
-| model | M2 rate | causal weight | pre-registered? |
+| model | M2 rate | causal weight | regime |
 |---|---|---|---|
-| qwen2.5-3b | 0.73 | large — 5 heads suffice | ✔ causal |
-| olmo2 | 0.62 | large — 10 heads | ✔ causal |
-| phi3.5 | 0.57 | large — 10 heads | ✔ causal |
-| mistral | **0.84** | redundant — 30 heads | ✗ exploratory |
-| qwen2.5-7b | 0.62 | redundant — 30 heads | ✗ exploratory |
-| llama3.1 | 0.62 | **weak — significant but sub-margin** | ✔ (sub-margin) |
-| gemma2 | 0.14 | weak — significant, sub-margin, tie-confounded low-k | ✔ (sub-margin) |
+| qwen2.5-3b | 0.73 | large — 5 heads suffice | causal (pre-registered) |
+| olmo2 | 0.62 | large — 10 heads | causal (pre-registered) |
+| phi3.5 | 0.57 | large — 10 heads | causal (pre-registered) |
+| mistral | **0.84** | redundant — 30 heads | redundant (exploratory) |
+| qwen2.5-7b | 0.62 | redundant — 30 heads | redundant (exploratory) |
+| gemma2 | **0.14** | redundant — full 77-head set | redundant (exploratory) |
+| llama3.1 | 0.62 | **sub-margin even at the full 39-head set** | **dissociation (unique)** |
 
 **The central result is a dissociation between two magnitudes, not between presence
-and absence.** The M2 rate tells you nothing about the causal architecture:
+and absence — and the M2 rate tells you nothing about the causal architecture:**
 
-* mistral shows the **strongest** mechanism (0.84 M2) yet its retrieval is the most
-  **redundant** (needs 30 heads);
-* llama3.1 shows a **dominant** mechanism (0.62 M2) yet the **weakest** causal weight
-  (significant but never clears 20 pp);
-* qwen2.5-3b shows a comparable mechanism (0.73 M2) but the **strongest** causal
-  weight (5 heads suffice).
+* the **lowest**-M2 model (gemma2, 0.14) and the **highest**-M2 model (mistral, 0.84)
+  are **both redundant** — many heads needed, but a clear effect once patched;
+* llama3.1 (mid, 0.62 M2) is the **unique dissociation**: significant but sub-margin
+  **even patching all 39 detected heads** — maximal visible signature, causal weight
+  that never reaches threshold;
+* qwen2.5-3b (0.73 M2) has the **strongest** causal weight (5 heads suffice).
+
+M2 rate and causal architecture are **uncorrelated across the panel** (0.14→redundant,
+0.62→dissociation, 0.62→redundant, 0.73→5-heads, 0.84→redundant).
 
 So "the retrieval heads attend the distractor" (the profiling observable) does not
 predict "patching them matters, and how much" (the causal fact). That gap — visible
 signature vs graded causal weight, **uncorrelated across the panel** — is the
 contribution over profiling work that measures only the correlation. llama3.1 is the
-sharpest case: **maximal visible signature, minimal causal weight**, yet still
-BH-significant — a *strength* dissociation, not a mechanism-without-causality one.
+sharpest case: **maximal visible signature, causal weight that stays below threshold
+even at the full detected set** — yet still BH-significant. A *strength* dissociation
+that survives the strongest form of the under-dosing objection, not a
+mechanism-without-causality one.
 
-gemma2 is the one architecture that is not M2-dominant at all (residual/M1); its
-causal signal appears only at post-tie k (§D) and stays sub-margin. Its distinct
-behaviour is **plausibly related to** its softcap + sliding-window attention, but
-that link is not tested here and is stated as conjecture, not result.
+gemma2 is the one architecture that is not M2-dominant at all (residual/M1). Its
+causal signal is tie-confounded at low k (§D) and sub-margin through k = 30, but at
+its **full 77-head set it clears the margin decisively** (break 0.478, margin +0.438)
+— so gemma2 is **redundant-causal**, not dissociated. Its distinct non-M2 profile is
+**plausibly related to** its softcap + sliding-window attention, but that link is not
+tested here and is stated as conjecture, not result.
 
 ---
 
@@ -233,9 +253,10 @@ the primary detector check and is complete.
 | 3/7 clear the 20 pp margin at k ≤ 10 (qwen2.5-3b, olmo2, phi3.5) | **confirmatory** (pre-registered) |
 | the other 4/7 are BH-significant but **sub-margin** at k ≤ 10 | **confirmatory** (pre-registered decision is binary) |
 | mistral & qwen2.5-7b clear the margin at k = 30 → redundancy | **exploratory** (k > 10, post-hoc) |
-| llama3.1: **dominant mechanism, weakest causal weight** (significant, never clears 20 pp) — a *strength* dissociation | confirmatory |
-| **M2 rate does not predict causal weight** (uncorrelated across the panel) | confirmatory (the central claim) |
-| gemma2 non-M2-dominant; causal signal only post-tie (k ≥ 20; §D) and sub-margin | confirmatory |
+| **llama3.1 stays sub-margin even at the full 39-head set → unique dissociation, under-dosing ruled out** | **exploratory** (full-set patch) — the decisive robustness result |
+| **gemma2 clears the margin at the full 77-head set → redundant, reclassified out of dissociation** | **exploratory** (full-set patch) |
+| llama3.1: dominant mechanism, causal weight below threshold at every k incl. full set — a *strength* dissociation | confirmatory (sub-margin) + exploratory (full-set robustness) |
+| **M2 rate does not predict causal weight** (0.14 & 0.84 both redundant; 0.62 dissociates) | confirmatory direction, sharpened by the exploratory full-set |
 | gemma2 behaviour ↔ softcap/sliding-window | **conjecture** — not tested |
 | M2 detector-robust | **not supported** — Qwen-only; argmax-specific for 5/7 (§F) |
 

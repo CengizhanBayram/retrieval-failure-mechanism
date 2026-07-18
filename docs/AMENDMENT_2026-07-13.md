@@ -242,13 +242,15 @@ it says we patched an arbitrary subset of the indistinguishable ones.
 
 **Consequence.** The earlier reading — *"gemma2 is the M1-silence model whose
 retrieval heads are not causal"* — is **withdrawn**. It was premature, exactly as
-flagged. **Resolved by the k = 20/30 extension** (§H), which covers the whole tied
-block: gemma2's break is BH-significant from k = 10 (its first non-tie-confounded k;
-p ≈ 1e-4 at k = 20/30) but **never clears the 20 pp margin** (break flip peaks ~0.12
-at k = 30). So gemma2 is *not* causally inert — it is **significant-but-sub-margin**,
-like llama3.1, and it must be read only from k ≥ 20 (past the tie). Its distinctive
-non-M2 profile is *plausibly related to* its softcap + sliding-window attention, but
-that link is a conjecture, not tested here.
+flagged. **Resolved by the k-extension and the full-set patch** (§H): gemma2's break
+is BH-significant from k = 10 (its first non-tie-confounded k) and sub-margin through
+k = 30, but at its **full 77-head set the break flip is 0.478, margin +0.438**, which
+clears the 20 pp margin decisively. So gemma2 is **redundant-causal** (it was
+under-dosed at k ≤ 30), **not** the sub-margin case it looked like — and it must be
+read only from k ≥ 20 (past the tie). By contrast llama3.1's full 39-head set stays
+sub-margin (margin +0.083), so llama3.1 is the **unique genuine dissociation**.
+gemma2's distinctive non-M2 profile is *plausibly related to* its softcap +
+sliding-window attention, but that link is a conjecture, not tested here.
 
 **Fix.** `detect.boundary_tie(k)` reports, for each k, the score at the cut, how
 many heads tie it, how many were admitted and how many excluded, and a boolean
