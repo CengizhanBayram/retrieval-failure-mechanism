@@ -132,6 +132,14 @@ def main(argv=None):
                          "loses nothing: every finished k is already checkpointed.")
     ap.add_argument("--fresh", action="store_true",
                     help="ignore existing checkpoints and recompute every k")
+    ap.add_argument("--extra-k", type=int, nargs="*", default=[],
+                    help="EXPLORATORY extra head-set sizes appended to configs/e3.yaml "
+                         "k_list for THIS model only (e.g. --extra-k 39 to patch the full "
+                         "detected set of llama3.1). Passed on the CLI, not the config, so "
+                         "the checkpoint fingerprint is unchanged: existing k are reused "
+                         "from checkpoints and only the new k is computed. The value must "
+                         "not exceed the model's detected head count (top_k_heads refuses "
+                         "to pad).")
     args = ap.parse_args(argv)
     t_start = time.time()
 
@@ -147,7 +155,10 @@ def main(argv=None):
     margin_pp = float(PR.get(prereg, "causal_criteria.flip_margin_over_control_pp"))
     alpha = float(PR.get(prereg, "causal_criteria.alpha"))
     stat_ci = float(PR.get(prereg, "statistics.ci"))
-    k_list = e3_cfg["k_list"]
+    # Merge the config k_list with any CLI --extra-k (exploratory, per-model). The
+    # fingerprint hashes e3.yaml, NOT the CLI, so adding k here does not invalidate
+    # the checkpoints of the config k values — they resume; only the new k computes.
+    k_list = sorted(set(e3_cfg["k_list"]) | set(args.extra_k))
     patch_mode = e3_cfg.get("patch_mode", "first_step")
     ctrl_seed_base = int(e3_cfg["random_control_seed_base"])
 
@@ -172,7 +183,16 @@ def main(argv=None):
     factory = ProbeFactory(tokenizer, grid_cfg, args.model)
 
     max_k = max(k_list)
+    n_detected = len(det._ranked("argmax"))
+    if max_k > n_detected:
+        raise SystemExit(
+            f"k={max_k} exceeds the {n_detected} detected argmax heads for "
+            f"{args.model}. The full detected set is k={n_detected}; pass "
+            f"--extra-k {n_detected} (not more — top_k_heads refuses to pad).")
     heads_max = det.top_k_heads(max_k, detector="argmax")
+    if args.extra_k:
+        log.info("k_list = %s (config + exploratory --extra-k %s); full detected set "
+                 "for this model is %d heads.", k_list, args.extra_k, n_detected)
 
     # ---- Head-set determinacy diagnostic (recorded, not acted on) ------------
     # The detector score saturates at 1.0. Where the top-k cut splits a block of
@@ -364,6 +384,10 @@ def main(argv=None):
                "pairs_source": "e2.pairs_by_cell", "n_pairs": n_pairs_e3,
                "k_requested": [int(k) for k in k_list],
                "k_completed": sorted(int(k) for k in out_by_k),
+               # CLI exploratory extension (e.g. the full detected head set) and the
+               # model's total detected head count, so a full-set k is auditable.
+               "extra_k_cli": sorted(int(k) for k in args.extra_k),
+               "n_detected_argmax_heads": n_detected,
                # An artifact stopped by the time budget is INCOMPLETE. Say so here
                # rather than letting a partial k-sweep read as a finished one.
                "complete": not missing,

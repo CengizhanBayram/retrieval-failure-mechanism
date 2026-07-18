@@ -65,7 +65,6 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     paths_cfg = C.load_paths_cfg()
-    e3_cfg = C.load_yaml(C.config_path("e3.yaml"))["e3"]
     prereg = PR.load_prereg(args.prereg)
     alpha = float(PR.get(prereg, "causal_criteria.alpha"))
     margin_pp = float(PR.get(prereg, "causal_criteria.flip_margin_over_control_pp"))
@@ -112,8 +111,14 @@ def main(argv=None):
         table[m] = row
 
     # ---- authoritative BH across {models x directions}, per k (§7) ----
+    # Iterate every k that ACTUALLY appears in the E3 artifacts (the union across
+    # models), not just configs/e3.yaml k_list — otherwise a per-model exploratory
+    # extension (e.g. llama3.1 --extra-k 39, gemma2 --extra-k 77) would be silently
+    # dropped from the causal decision. BH's family at a k is the tests present at
+    # that k, so a full-set k with a single model is a 2-test (2-direction) family.
+    all_ks = sorted({key[2] for key in e3_pool}, key=lambda s: int(s))
     causal_decision = {}
-    for k in [str(x) for x in e3_cfg["k_list"]]:
+    for k in all_ks:
         keys = [key for key in e3_pool if key[2] == k]
         pvals = [e3_pool[key]["p"] for key in keys]
         if not pvals:
