@@ -34,57 +34,136 @@ class Generation:
     text: str
 
 
-class _OProjPatcher:
-    """Forward-pre-hook controller on o_proj: captures and/or overwrites the
-    per-head z at the LAST position of the current forward."""
+class PatchError(RuntimeError):
+    """Raised when a patch site is unsupported for a model (e.g. site='v' on a
+    fused-qkv architecture with no separate v_proj)."""
 
-    def __init__(self, model, heads: list[tuple[int, int]]):
+
+SITES = ("z_h", "v", "mlp")
+
+
+def _mlp_module(model, layer_idx: int):
+    return model.model.layers[layer_idx].mlp
+
+
+class _SitePatcher:
+    """Capture and/or overwrite a donor activation at the LAST position of the
+    prompt forward (the answer step), at one of three sites. Keyed throughout by
+    the QUERY head ``(layer, head)`` so the caller (E3) is unchanged across sites;
+    the site only changes WHICH tensor slice that key maps to:
+
+      site="z_h" : forward-PRE-hook on ``o_proj``; slice ``[h*hd:(h+1)*hd]`` of its
+                   input (the concatenated per-head outputs). The original path —
+                   bitwise-identical to before.
+      site="v"   : forward-hook on ``v_proj`` OUTPUT; slice ``[kv*hd:(kv+1)*hd]``
+                   where ``kv = query_to_kv_head(h)``. GQA: query heads sharing a
+                   KV head map to the SAME slice, so capturing/patching them writes
+                   the same value idempotently (correct, and it keeps the caller's
+                   head-keyed donor dict intact).
+      site="mlp" : forward-hook on the layer MLP OUTPUT; the WHOLE vector (the MLP
+                   is not head-indexed), so every head in a layer maps to that
+                   layer's single MLP output — again an idempotent shared write.
+    """
+
+    def __init__(self, model, heads: list[tuple[int, int]], site: str = "z_h"):
+        if site not in SITES:
+            raise PatchError(f"unknown site {site!r}; expected one of {SITES}")
         self.model = model
+        self.site = site
         self.heads = heads
         self.by_layer: dict[int, list[int]] = {}
         for (l, h) in heads:
             self.by_layer.setdefault(l, []).append(h)
         self.head_dim = panel.head_dim(model)
-        # runtime state
-        self.capture = False           # capture donor z at the answer step?
-        self.patch_enabled = False     # overwrite z with the donor?
-        self.patch_mode = "first_step" # "first_step" | "sustained"
-        self.donor: dict[tuple[int, int], object] = {}   # (l,h) -> tensor [head_dim]
+        self.n_q, self.n_kv = panel.head_counts(model)
+        self.capture = False
+        self.patch_enabled = False
+        self.patch_mode = "first_step"
+        self.donor: dict[tuple[int, int], object] = {}
         self.captured: dict[tuple[int, int], object] = {}
         self._handles = []
 
+    def _slice(self, h: int):
+        """(start, end) columns for query head ``h`` at this site, or None for the
+        whole vector (mlp)."""
+        if self.site == "z_h":
+            return (h * self.head_dim, (h + 1) * self.head_dim)
+        if self.site == "v":
+            kv = panel.query_to_kv_head(h, self.n_q, self.n_kv)
+            return (kv * self.head_dim, (kv + 1) * self.head_dim)
+        return None  # mlp: whole vector
+
+    def _target(self, layer: int):
+        """(module, hook_kind) for this site. z_h hooks the o_proj INPUT (pre);
+        v/mlp hook the module OUTPUT (post)."""
+        if self.site == "z_h":
+            return panel.attn_module(self.model, layer).o_proj, "pre"
+        if self.site == "v":
+            attn = panel.attn_module(self.model, layer)
+            if not hasattr(attn, "v_proj"):
+                raise PatchError(
+                    f"site='v' needs a separate v_proj, but {type(attn).__name__} "
+                    "has none (fused qkv, e.g. Phi-3). Not supported for this model.")
+            return attn.v_proj, "post"
+        return _mlp_module(self.model, layer), "post"
+
+    def _apply(self, x, layer: int):
+        """Capture (read-only) and/or patch (return modified) at the last position.
+        Returns the modified tensor when patching, else None (no change)."""
+        is_prompt = x.shape[1] > 1     # answer step = last pos of the prompt forward
+        if self.capture and is_prompt:
+            for h in self.by_layer[layer]:
+                sl = self._slice(h)
+                v = x[:, -1, sl[0]:sl[1]] if sl else x[:, -1, :]
+                self.captured[(layer, h)] = v[0].detach().clone()
+        if self.patch_enabled and (self.patch_mode == "sustained" or is_prompt):
+            x = x.clone()
+            for h in self.by_layer[layer]:
+                dv = self.donor.get((layer, h))
+                if dv is None:
+                    continue
+                vec = dv.to(device=x.device, dtype=x.dtype)
+                sl = self._slice(h)
+                if sl:
+                    x[:, -1, sl[0]:sl[1]] = vec
+                else:
+                    x[:, -1, :] = vec
+            return x
+        return None
+
     def __enter__(self):
-        for li in self.by_layer:
-            o_proj = panel.attn_module(self.model, li).o_proj
+        for layer in self.by_layer:
+            mod, kind = self._target(layer)
 
             def make(idx):
-                def pre_hook(_m, args):
-                    x = args[0]
-                    # The ANSWER step is the last position of the PROMPT forward
-                    # (seq_len > 1). Incremental generation steps have seq_len == 1.
-                    is_prompt_forward = x.shape[1] > 1
-                    if self.capture and is_prompt_forward:
-                        for h in self.by_layer[idx]:
-                            sl = x[:, -1, h * self.head_dim:(h + 1) * self.head_dim]
-                            self.captured[(idx, h)] = sl[0].detach().clone()
-                    if self.patch_enabled and (self.patch_mode == "sustained" or is_prompt_forward):
-                        x = x.clone()
-                        for h in self.by_layer[idx]:
-                            dv = self.donor.get((idx, h))
-                            if dv is not None:
-                                vec = dv.to(device=x.device, dtype=x.dtype)
-                                x[:, -1, h * self.head_dim:(h + 1) * self.head_dim] = vec
-                        return (x,) + tuple(args[1:])
-                    return None
-                return pre_hook
+                if kind == "pre":
+                    def pre_hook(_m, args):
+                        out = self._apply(args[0], idx)
+                        return None if out is None else (out,) + tuple(args[1:])
+                    return pre_hook
 
-            self._handles.append(o_proj.register_forward_pre_hook(make(li)))
+                def post_hook(_m, _inp, output):
+                    t = output[0] if isinstance(output, tuple) else output
+                    out = self._apply(t, idx)
+                    if out is None:
+                        return None
+                    return (out,) + tuple(output[1:]) if isinstance(output, tuple) else out
+                return post_hook
+
+            handle = (mod.register_forward_pre_hook(make(layer)) if kind == "pre"
+                      else mod.register_forward_hook(make(layer)))
+            self._handles.append(handle)
         return self
 
     def __exit__(self, *exc):
         for h in self._handles:
             h.remove()
         self._handles.clear()
+
+
+# Backward-compatible alias: the z_h-only controller callers may still reference.
+def _OProjPatcher(model, heads):
+    return _SitePatcher(model, heads, site="z_h")
 
 
 def _generate_hf(model, tokenizer, input_ids, decoding_cfg) -> "Generation":
@@ -205,29 +284,32 @@ def generate_plain_batch(model, tokenizer, input_ids_list, decoding_cfg) -> list
 
 
 def capture_donor_z(model, tokenizer, input_ids, heads, decoding_cfg,
-                    *, answer_steps: int = 1) -> dict:
-    """Capture donor z_h at the answer step (per head) for ``heads``.
+                    *, answer_steps: int = 1, site: str = "z_h") -> dict:
+    """Capture the donor activation at the answer step for ``heads``, at ``site``
+    (z_h | v | mlp).
 
     Captured during the SAME ``model.generate`` prompt forward that
     ``generate_with_patch`` patches, so the donor value matches exactly and
-    self-patch stays bitwise-identical. Returns ``{(layer, head):
-    np.ndarray[head_dim] float32}``.
+    self-patch stays bitwise-identical. Keyed by query head ``(layer, head)``;
+    for site='v'/'mlp' heads that share a KV head / layer carry the same value.
+    Returns ``{(layer, head): np.ndarray float32}``.
     """
-    ctrl = _OProjPatcher(model, heads)
+    ctrl = _SitePatcher(model, heads, site=site)
     with ctrl:
         ctrl.capture = True
         ctrl.patch_enabled = False
-        _generate_hf(model, tokenizer, input_ids, decoding_cfg)  # prompt forward captures step-0 z
+        _generate_hf(model, tokenizer, input_ids, decoding_cfg)  # prompt forward captures step-0
     return {lh: v.float().cpu().numpy() for lh, v in ctrl.captured.items()}
 
 
 def generate_with_patch(
     model, tokenizer, input_ids, heads, donor_z: dict, decoding_cfg,
-    *, patch_mode: str = "first_step",
+    *, patch_mode: str = "first_step", site: str = "z_h",
 ) -> Generation:
-    """Greedy generation with the target heads' z_h replaced by ``donor_z``."""
+    """Greedy generation with the target heads' activation at ``site`` replaced by
+    ``donor_z`` (z_h | v | mlp)."""
     import torch
-    ctrl = _OProjPatcher(model, heads)
+    ctrl = _SitePatcher(model, heads, site=site)
     for (l, h) in heads:
         v = donor_z.get((l, h))
         if v is not None:
@@ -240,14 +322,16 @@ def generate_with_patch(
 
 
 def self_patch_generate(model, tokenizer, input_ids, heads, decoding_cfg,
-                        *, patch_mode: str = "first_step") -> tuple[Generation, Generation]:
-    """Self-patch: patch the recipient with ITS OWN z. Returns (plain, patched).
-    The two MUST be token-identical (§4.4); callers assert it and abort on
-    failure."""
-    donor = capture_donor_z(model, tokenizer, input_ids, heads, decoding_cfg)
+                        *, patch_mode: str = "first_step",
+                        site: str = "z_h") -> tuple[Generation, Generation]:
+    """Self-patch: patch the recipient with ITS OWN activation at ``site``. Returns
+    (plain, patched); the two MUST be token-identical (§4.4) — callers assert it
+    and abort on failure. Works for every site (the write replaces a value with
+    itself, idempotent even where heads share a KV slice or an MLP output)."""
+    donor = capture_donor_z(model, tokenizer, input_ids, heads, decoding_cfg, site=site)
     plain = generate_plain(model, tokenizer, input_ids, decoding_cfg)
     patched = generate_with_patch(model, tokenizer, input_ids, heads, donor,
-                                  decoding_cfg, patch_mode=patch_mode)
+                                  decoding_cfg, patch_mode=patch_mode, site=site)
     return plain, patched
 
 

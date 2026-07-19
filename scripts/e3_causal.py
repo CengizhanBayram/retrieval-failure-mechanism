@@ -82,34 +82,71 @@ def _grade_plain(model, tokenizer, probe, decoding_cfg) -> bool:
     return grading.grade_generation(gen.text, probe.needle_value, probe.distractor_values).correct
 
 
-def _grade_patched(model, tokenizer, probe, heads, donor, decoding_cfg, patch_mode) -> bool:
+def _grade_patched(model, tokenizer, probe, heads, donor, decoding_cfg, patch_mode,
+                   site="z_h") -> bool:
     gen = patching.generate_with_patch(model, tokenizer, probe.input_ids, heads, donor,
-                                       decoding_cfg, patch_mode=patch_mode)
+                                       decoding_cfg, patch_mode=patch_mode, site=site)
     return grading.grade_generation(gen.text, probe.needle_value, probe.distractor_values).correct
 
 
-def _random_heads(det, k, seed) -> list[tuple[int, int]]:
-    pool = det.non_retrieval_heads(detector="argmax")
+def _site_units(heads, site, n_q, n_kv):
+    """Distinct units a head list actually patches at a site: (l,h) for z_h,
+    (l,kv) for v (GQA), layer for mlp."""
+    if site == "z_h":
+        return {(l, h) for (l, h) in heads}
+    if site == "v":
+        return {(l, P.query_to_kv_head(h, n_q, n_kv)) for (l, h) in heads}
+    return {l for (l, _h) in heads}
+
+
+def _control_heads(det, treatment_heads, site, seed, model):
+    """Representative query heads whose SITE-units are disjoint from the treatment
+    units and match their COUNT (a fair random control at that site):
+      z_h : k random non-retrieval query heads (the pre-registered control).
+      v   : as many random (layer, kv) units NOT in the treatment KV set, mapped
+            back to a representative query head kv*group.
+      mlp : as many random OTHER layers as the treatment spans (capped by how many
+            layers remain — the cap is recorded), one representative head each.
+    """
     rng = random.Random(seed)
-    return rng.sample(pool, k)
+    n_q, n_kv = P.head_counts(model)
+    n_layers = int(model.config.num_hidden_layers)
+    if site == "z_h":
+        pool = det.non_retrieval_heads(detector="argmax")
+        return rng.sample(pool, len(treatment_heads))
+    if site == "v":
+        group = n_q // n_kv
+        treat = _site_units(treatment_heads, "v", n_q, n_kv)
+        pool = [(l, kv) for l in range(n_layers) for kv in range(n_kv) if (l, kv) not in treat]
+        chosen = rng.sample(pool, min(len(treat), len(pool)))
+        return [(l, kv * group) for (l, kv) in chosen]
+    # mlp: disjoint layers
+    treat_layers = _site_units(treatment_heads, "mlp", n_q, n_kv)
+    pool = [l for l in range(n_layers) if l not in treat_layers]
+    chosen = rng.sample(pool, min(len(treat_layers), len(pool)))
+    return [(l, 0) for l in chosen]
 
 
-def _self_patch_check(model, tokenizer, cell_pairs, heads, decoding_cfg, patch_mode, model_key):
+def _self_patch_check(model, tokenizer, cell_pairs, heads, decoding_cfg, patch_mode,
+                      model_key, site="z_h"):
     """Run the self-patch no-op ONCE per model (§4.4): patch a recipient with its
-    OWN z and require a token-identical generation. Independent of k and of the
-    repair/break loop, so it need not repeat per pair. ABORT on mismatch."""
+    OWN activation at ``site`` and require a token-identical generation. Independent
+    of k and of the repair/break loop. ABORT on mismatch — for a non-z_h site this
+    is the primary correctness guard that the new hook is on the right tensor."""
     for pairs in cell_pairs.values():
         if not pairs:
             continue
         _si, _sp, _fi, fp = pairs[0]
-        donor_self = patching.capture_donor_z(model, tokenizer, fp.input_ids, heads, decoding_cfg)
+        donor_self = patching.capture_donor_z(model, tokenizer, fp.input_ids, heads,
+                                              decoding_cfg, site=site)
         plain = patching.generate_plain(model, tokenizer, fp.input_ids, decoding_cfg)
         patched = patching.generate_with_patch(model, tokenizer, fp.input_ids, heads,
-                                               donor_self, decoding_cfg, patch_mode=patch_mode)
+                                               donor_self, decoding_cfg,
+                                               patch_mode=patch_mode, site=site)
         if plain.token_ids != patched.token_ids:
             raise SelfPatchError(
-                f"Self-patch mismatch (model={model_key}). ABORTING (§4.4). "
-                "Investigate the o_proj hook / dtype round-trip.")
+                f"Self-patch mismatch (model={model_key}, site={site}). ABORTING (§4.4). "
+                f"The {site} hook is on the wrong tensor or the dtype round-trip is lossy.")
         return True
     return True  # no pairs to check
 
@@ -140,7 +177,22 @@ def main(argv=None):
                          "from checkpoints and only the new k is computed. The value must "
                          "not exceed the model's detected head count (top_k_heads refuses "
                          "to pad).")
+    ap.add_argument("--site", choices=list(patching.SITES), default="z_h",
+                    help="EXPLORATORY patch site: z_h (head output before o_proj, the "
+                         "pre-registered default) | v (v_proj value slice, GQA-aware) | "
+                         "mlp (the layer's whole MLP output). v/mlp probe whether the "
+                         "bottleneck is downstream of the attention row.")
+    ap.add_argument("--tag", default=None,
+                    help="output filename suffix, e.g. --tag site-v writes "
+                         "e3_causal_<model>_site-v.json (never overwrites the z_h run). "
+                         "A non-z_h --site requires a --tag.")
+    ap.add_argument("--k-list", type=int, nargs="*", default=None,
+                    help="override the config k_list for THIS run (e.g. --k-list 10 30 "
+                         "for the site follow-up). Combined with --extra-k.")
     args = ap.parse_args(argv)
+    if args.site != "z_h" and not args.tag:
+        raise SystemExit("--site v/mlp requires --tag (so the exploratory site run is "
+                         "written to a separate file, not over the pre-registered z_h run).")
     t_start = time.time()
 
     grid_cfg = C.load_yaml(C.config_path("grid.yaml"))
@@ -155,12 +207,17 @@ def main(argv=None):
     margin_pp = float(PR.get(prereg, "causal_criteria.flip_margin_over_control_pp"))
     alpha = float(PR.get(prereg, "causal_criteria.alpha"))
     stat_ci = float(PR.get(prereg, "statistics.ci"))
-    # Merge the config k_list with any CLI --extra-k (exploratory, per-model). The
-    # fingerprint hashes e3.yaml, NOT the CLI, so adding k here does not invalidate
-    # the checkpoints of the config k values — they resume; only the new k computes.
-    k_list = sorted(set(e3_cfg["k_list"]) | set(args.extra_k))
+    # Merge the (config or --k-list) k values with any CLI --extra-k (exploratory,
+    # per-model). The fingerprint hashes e3.yaml, NOT the CLI, so CLI k values do not
+    # invalidate the config-k checkpoints — they resume; only new k compute.
+    base_k = args.k_list if args.k_list else e3_cfg["k_list"]
+    k_list = sorted(set(base_k) | set(args.extra_k))
     patch_mode = e3_cfg.get("patch_mode", "first_step")
     ctrl_seed_base = int(e3_cfg["random_control_seed_base"])
+    site = args.site
+    # A non-z_h site is a different intervention, so it gets its OWN checkpoint dir
+    # and output file — it never touches the pre-registered z_h run.
+    exp_name = "e3" if site == "z_h" else f"e3_{args.tag}"
 
     C.set_global_seed(seed)
     results_dir = Path(paths_cfg["output"]["results_dir"])
@@ -213,7 +270,7 @@ def main(argv=None):
 
     # ---- Checkpoints: one per k, so a killed session loses at most one k ------
     ckpt = C.CheckpointManager(
-        results_dir, "e3", args.model, fresh=args.fresh,
+        results_dir, exp_name, args.model, fresh=args.fresh,
         fingerprint=C.probe_fingerprint(
             [C.config_path("e3.yaml"), C.config_path("grid.yaml"),
              C.config_path("decoding.yaml"), PR.resolve_prereg_path(args.prereg)],
@@ -263,8 +320,30 @@ def main(argv=None):
     log.info("pair set: %d pairs read from E2 (matches E2's pairs_used).", n_pairs_e3)
 
     # ---- Self-patch smoke check ONCE per model (§4.4), abort on mismatch -----
+    # For a non-z_h site this is THE positive-control-in-miniature: it fails loudly
+    # if the new hook is on the wrong tensor.
     self_patch_ok = _self_patch_check(model, tokenizer, cell_pairs, heads_max,
-                                      decoding_cfg, patch_mode, args.model)
+                                      decoding_cfg, patch_mode, args.model, site=site)
+
+    # ---- Site metadata per k (what the intervention actually touches) ----------
+    n_q, n_kv = P.head_counts(model)
+    site_meta: dict = {}
+    for k in k_list:
+        treat = heads_max[:k]
+        if site == "v":
+            kv_units = _site_units(treat, "v", n_q, n_kv)
+            site_meta[str(k)] = {
+                "kv_heads_patched": len(kv_units),
+                # GQA side-effect: patching a KV head hits ALL query heads that share
+                # it, not only the retrieval heads that selected it.
+                "query_heads_affected": sum(
+                    P.gqa_group_size(n_q, n_kv) for _ in kv_units),
+                "retrieval_query_heads": k,
+            }
+        elif site == "mlp":
+            layers = _site_units(treat, "mlp", n_q, n_kv)
+            site_meta[str(k)] = {"layers_patched": len(layers),
+                                 "retrieval_query_heads": k}
 
     # ---- Flatten the pairs and precompute every random-control head set -------
     # The control seeds depend on (pair, k) exactly as before, so the head sets
@@ -279,8 +358,8 @@ def main(argv=None):
         for k in k_list:
             rs = ctrl_seed_base + i * 7 + k
             bs = ctrl_seed_base + i * 13 + k
-            rheads_r[(i, k)] = _random_heads(det, k, rs)
-            rheads_b[(i, k)] = _random_heads(det, k, bs)
+            rheads_r[(i, k)] = _control_heads(det, heads_max[:k], site, rs, model)
+            rheads_b[(i, k)] = _control_heads(det, heads_max[:k], site, bs, model)
             ctrl_seeds_by_k[k].append({"pair": i, "repair_seed": rs, "break_seed": bs})
 
     # ---- Capture each probe's donor ONCE, at the UNION of every head set -------
@@ -302,9 +381,9 @@ def main(argv=None):
             need_sp = set(heads_max) | {lh for k in k_list for lh in rheads_r[(i, k)]}
             need_fp = set(heads_max) | {lh for k in k_list for lh in rheads_b[(i, k)]}
             donors_sp[i] = patching.capture_donor_z(model, tokenizer, sp.input_ids,
-                                                    sorted(need_sp), decoding_cfg)
+                                                    sorted(need_sp), decoding_cfg, site=site)
             donors_fp[i] = patching.capture_donor_z(model, tokenizer, fp.input_ids,
-                                                    sorted(need_fp), decoding_cfg)
+                                                    sorted(need_fp), decoding_cfg, site=site)
         log.info("donors captured for %d pairs (%d prompt forwards; the per-(pair,k) "
                  "path would have needed %d).", len(pairs_flat), 2 * len(pairs_flat),
                  4 * len(k_list) * len(pairs_flat))
@@ -339,10 +418,10 @@ def main(argv=None):
 
             rep_correct = _grade_patched(model, tokenizer, fp, heads,
                                          {lh: d_sp[lh] for lh in heads},
-                                         decoding_cfg, patch_mode)
+                                         decoding_cfg, patch_mode, site)
             brk_correct = _grade_patched(model, tokenizer, sp, heads,
                                          {lh: d_fp[lh] for lh in heads},
-                                         decoding_cfg, patch_mode)
+                                         decoding_cfg, patch_mode, site)
             # Flips are defined RELATIVE TO THE UNPADDED NO-PATCH BASELINE so
             # they are apples-to-apples with the patched (also unpadded) run,
             # independent of the batched pairing path (§6 fix).
@@ -352,9 +431,9 @@ def main(argv=None):
             # random controls (resampled per pair; seed recorded, §4.4)
             hr, hb = rheads_r[(i, k)], rheads_b[(i, k)]
             cr = _grade_patched(model, tokenizer, fp, hr, {lh: d_sp[lh] for lh in hr},
-                                decoding_cfg, patch_mode)
+                                decoding_cfg, patch_mode, site)
             cb = _grade_patched(model, tokenizer, sp, hb, {lh: d_fp[lh] for lh in hb},
-                                decoding_cfg, patch_mode)
+                                decoding_cfg, patch_mode, site)
             ind["ctrl_repair"].append(int((not base_fp) and cr))
             ind["ctrl_break"].append(int(base_sp and (not cb)))
 
@@ -388,14 +467,18 @@ def main(argv=None):
                # model's total detected head count, so a full-set k is auditable.
                "extra_k_cli": sorted(int(k) for k in args.extra_k),
                "n_detected_argmax_heads": n_detected,
+               # EXPLORATORY patch site (z_h is the pre-registered default; v/mlp are
+               # the downstream-bottleneck follow-up) and what each k actually touched.
+               "site": site, "tag": args.tag, "site_meta": site_meta,
                # An artifact stopped by the time budget is INCOMPLETE. Say so here
                # rather than letting a partial k-sweep read as a finished one.
                "complete": not missing,
                "note": "authoritative BH across 4 models x 2 directions is finalized in E4"})
-    C.write_json(results_dir / f"e3_causal_{args.model}.json",
+    suffix = f"_{args.tag}" if args.tag else ""
+    C.write_json(results_dir / f"e3_causal_{args.model}{suffix}.json",
                  {"provenance": provenance, "k": out_by_k,
                   "head_set_ties": head_set_ties})
-    log.info("E3 done for %s (k_list=%s).", args.model, k_list)
+    log.info("E3 done for %s (site=%s, k_list=%s).", args.model, site, k_list)
     return 0
 
 

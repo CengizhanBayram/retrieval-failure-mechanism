@@ -288,6 +288,39 @@ three architectures where the manual row could plausibly have been wrong: gemma2
 phi3 (fused QKV + partial rotary). The gate **must be run in fp32**: in bf16 the
 machine epsilon (~4e-3) exceeds the tolerance and the gate fails spuriously.
 
+## M. Patch site generalised to v / mlp — EXPLORATORY follow-up
+
+**Motivation.** The pre-registered patch site is `z_h` (the per-head output before
+`o_proj`). llama3.1 stays sub-margin on `break` even at its full 39-head set (§H
+full-set result), i.e. the retrieval-head *outputs* are not the bottleneck. The
+open question is *where* the bottleneck is. Two candidate downstream sites are
+added as an exploratory follow-up:
+
+* **`v`** — the `v_proj` value slice. GQA-aware: a query head maps to its KV head
+  (`kv = h // (n_q/n_kv)`), so patching a retrieval head's value patches the shared
+  KV slice; the output records `kv_heads_patched` and `query_heads_affected` (the
+  GQA side-effect count). Not supported on fused-qkv models (phi3) — flagged.
+* **`mlp`** — the layer's whole MLP output. Not head-indexed; the control is
+  `|L_ret|` random *other* layers' MLP (recorded, capped by layers available).
+
+**Guards (unchanged from z_h).** Donor/recipient pairing from `pairs_by_cell`; the
+flip definition (unpadded no-patch baseline); the 20 pp margin, paired permutation,
+BH. The **self-patch no-op is enforced per site** and is the primary correctness
+guard that the new hook is on the right tensor (unit tests
+`tests/test_patch_sites.py`; the runtime **positive control on qwen2.5-3b** must
+reproduce a large z_h-like effect before any llama3.1 null is trusted).
+
+**Isolation.** `--site v/mlp` requires `--tag`; it writes a **separate** artifact
+(`e3_causal_<model>_site-v.json`) and uses a **separate** checkpoint dir, never
+touching the pre-registered z_h run. `preregistration.yaml` is untouched; every
+site ≠ z_h result is **exploratory**.
+
+**Reads.** A significant, margin-clearing `break` effect at `v` or `mlp` on
+llama3.1 would turn the z_h null into a **positive** localisation ("the bottleneck
+is downstream of the attention row"). No effect at any site strengthens the
+dissociation across three intervention points. Either is reportable; both
+exploratory.
+
 ## L. Status of every run, and the order of operations
 
 Nothing below is confirmatory until it sits on a committed configuration. A run
@@ -299,8 +332,9 @@ without a commit is a pilot.
 | F (M2 floor) | **frozen at 0.10**; alternative floor → E5 sensitivity only |
 | H (k=20/30) | **exploratory** |
 | I (pair set) | code fixed; requires the config-identical E2 re-run (nb 09) |
-| J (gemma ties) | diagnostic added; gemma2 resolved — significant-but-sub-margin, read from k≥20 |
+| J (gemma ties) | diagnostic added; gemma2 resolved — redundant at the full 77-head set (§J) |
 | K (gate) | **passed**, now persisted |
+| M (v/mlp sites) | **exploratory**; code + tests in; positive control (qwen2.5-3b) gates the llama3.1 read |
 
 Order: **this amendment is committed first**, then E5 (Wu, olmo + phi first), then
 the E2 pair-recording re-run, then the exploratory k-sweep. Results are attached to
