@@ -1,4 +1,4 @@
-# Pre-registration amendment — dated record
+# Pre-registration amendment - dated record
 
 > **Dated 2026-07-13.** Drafted by the assistant at the researcher's request; the
 > researcher audits, edits and owns it.
@@ -13,14 +13,14 @@
 > It is committed **before** the runs it governs. A run without a commit is a
 > pilot.
 >
-> Supersedes the 2026-07-05 draft (§F rewritten; §H–§L added).
+> Supersedes the 2026-07-05 draft (§F rewritten; §H-§L added).
 
 ## A. Pilot declaration
 
 The full-panel A100 run of 2026-07-05 is declared a **PILOT**, not confirmatory,
 and its numbers are **not reported as results**. Rationale, from the data:
 - **Ceiling effect:** with `shell_share` off, the four strong models (llama,
-  mistral, qwen-7b, qwen-3b) sit at ~0.99 in-window accuracy — no breaking cells
+  mistral, qwen-7b, qwen-3b) sit at ~0.99 in-window accuracy - no breaking cells
   except marginal fallback-band ones.
 - **Coverage gaps:** E2 produced no output for gemma/mistral/olmo/phi (silent
   failures, cause under diagnosis), so only 3 of 7 models were dissected, none
@@ -45,7 +45,7 @@ design gaps below.
 | qwen25_3b_instruct | within-family size axis vs 7B | 32k |
 
 **Eager-reference gate (non-negotiable):** the three non-standard-attention
-models — gemma (softcap), olmo (QK-norm), phi (fused-QKV/partial-rotary) — each
+models - gemma (softcap), olmo (QK-norm), phi (fused-QKV/partial-rotary) - each
 produce ZERO confirmatory numbers until they pass the real-pinned-model
 eager-reference test (max|manual−eager| < 1e-3, notebook `00`). A model failing
 the gate is excluded and the exclusion reported.
@@ -65,7 +65,7 @@ trained positional range:
   into the retrieval-head-failure analysis.
 
 Rationale (pilot evidence): OLMo-2 collapses to acc **exactly 0.0** at 8k/16k
-(beyond its 4k window) — the accuracy band already excludes these — while its
+(beyond its 4k window) - the accuracy band already excludes these - while its
 in-window failures at 4k are **distractor-monotonic** (nd0=1.00 → nd10
 shell_diff=0.50) and similarity-dependent, i.e. genuine retrieval competition.
 The rule formalizes what the band did empirically, and guards a model whose
@@ -87,7 +87,7 @@ hash in provenance and the E1 checkpoint fingerprint.)
 ## E. Model rejection rule (no NaN in the family)
 
 A model is **rejected** from the confirmatory analysis (not carried as NaN) when
-it yields no qualifying in-window breaking cell — i.e. every in-window breaking
+it yields no qualifying in-window breaking cell - i.e. every in-window breaking
 cell has fewer than `pair_min_per_cell` matched pairs, or it fails the eager
 gate (§B). The BH correction family is `{qualifying models} × {repair, break}`,
 size `N×2` with the realized **N reported**. This closes the pilot's two
@@ -105,8 +105,8 @@ p5 = 0.103, p25 = 0.154, p50 = 0.193). The floor is therefore permissive, and th
 M2 rate is sensitive to it.
 
 But that observation was made **after** the bucket rates, the EFFECT labels and
-the model-to-model comparisons were on the table. Moving the floor now — knowing
-that a higher floor lowers the M2 rates we have already looked at — would be
+the model-to-model comparisons were on the table. Moving the floor now - knowing
+that a higher floor lowers the M2 rates we have already looked at - would be
 choosing the measurement rule to fit the result we have seen. That is HARKing,
 and no amount of good faith about the motive changes what it would be. The prior
 "may be re-calibrated on pilot data" clause was open only while the runs were
@@ -138,7 +138,7 @@ The pilot anomaly `distractor_hit → m1_silence = 16` (llama) is likewise
 `seeds`, sample sizes: unchanged. Per §F the M2 floor is **not** edited. Any
 future change is recorded here *before* the run it affects.
 
-## H. k-sweep extended to {20, 30} — EXPLORATORY, not confirmatory
+## H. k-sweep extended to {20, 30} - EXPLORATORY, not confirmatory
 
 **Pre-registered primary sweep: k ∈ {1, 5, 10}. Unchanged.**
 **Added post hoc, result-driven: k ∈ {20, 30}. Labelled exploratory, everywhere.**
@@ -160,7 +160,7 @@ Two outcomes, both publishable, both exploratory:
 Why it does not become confirmatory: it was chosen *because* of what the k ≤ 10
 results looked like. Reporting it as pre-registered would be a lie about its
 provenance; reporting it as exploratory costs nothing and is what makes it usable
-by a reader. Feasible panel-wide — the smallest detected head set is 30 (qwen25_3b).
+by a reader. Feasible panel-wide - the smallest detected head set is 30 (qwen25_3b).
 
 Recorded in `configs/e3.yaml` (comment), in the notebook filename
 (`10_A100_e3_ksweep_EXPLORATORY.ipynb`), and in this dated commit.
@@ -172,7 +172,7 @@ Grading batches through `_generate_batch_adaptive`, which **halves the batch on
 OOM**; a different batch composition changes the left-padding, and a greedy token
 can flip at the margin. Result: E2 measured the mechanism on **614** pairs while
 E3 measured causality on **625**. Mechanism and causality were being reported on
-different samples. This is not minor — it is the join between the paper's two
+different samples. This is not minor - it is the join between the paper's two
 halves.
 
 **Fix.** E2 now records the exact pairs it used (`pairs_by_cell`, as sample
@@ -182,7 +182,7 @@ rebuild the identical prompts). E3 **reads** that list, and:
 * aborts if its pair count disagrees with E2's `pairs_used`.
 
 **Cost, stated plainly.** No existing E2 artifact carries `pairs_by_cell`, so E2
-must be run once more to record it. This re-run is **configuration-identical** —
+must be run once more to record it. This re-run is **configuration-identical** -
 same pre-registration, same 0.10 floor, same seed; it is *not* the §F
 re-calibration and changes no threshold. Notebook
 `09_A100_e2_rerun_record_pairs.ipynb` performs the re-run;
@@ -192,20 +192,20 @@ re-calibration and changes no threshold. Notebook
 apart, and an earlier draft of this section conflated them by demanding the re-run
 "reproduce the current numbers exactly":
 
-* **Self-consistency** — does the re-run's recorded `pairs_by_cell` match its own
+* **Self-consistency** - does the re-run's recorded `pairs_by_cell` match its own
   `pairs_used`? This is the property E3/E4 validity actually rests on: E3 reads
   `pairs_by_cell`, so if it equals `pairs_used`, causality was measured on exactly
   the sample E2 classified. **PASS for all 7 models.** The pair-set defect above is
   therefore fixed *by construction* (the recording), independent of any run-to-run
   reproducibility.
-* **Run-to-run reproducibility** — does the re-run bit-match the *pre-fix* artifact
+* **Run-to-run reproducibility** - does the re-run bit-match the *pre-fix* artifact
   (made in an earlier session, on a different GPU type)? It does not, for 6/7
-  models, by **~1–2% of pairs**; the resulting **bucket-rate drift is ≤ 2.9 pp**
+  models, by **~1-2% of pairs**; the resulting **bucket-rate drift is ≤ 2.9 pp**
   (phi 0.0, mistral 0.5, olmo 0.6, llama 0.6, qwen3b 1.2, gemma 2.6, qwen7b 2.9).
   phi reproduces exactly because both its runs were on the same 80 GB GPU. This is
   greedy-decoding margin sensitivity to batch composition and **cross-session GPU
   kernel nondeterminism** (non-associative float reductions differ across GPU
-  architectures) — a documented property of batched greedy inference, **not a logic
+  architectures) - a documented property of batched greedy inference, **not a logic
   error**, and it does not touch self-consistency.
 
 **Disposition.** The "reproduce exactly" bar was mis-specified: exact
@@ -213,12 +213,12 @@ bit-reproduction of batched greedy grading across sessions/GPUs is not achievabl
 and it tested a stronger property than the science needs. The gate is
 **self-consistency (PASS)**. The run-to-run drift (≤ 2.9 pp, largest on the
 smallest-*n* model, qwen2.5-7b at *n*=113) is reported as a **limitation**: E2
-grade assignments carry ~1–2% marginal-sample noise across GPUs, immaterial to the
+grade assignments carry ~1-2% marginal-sample noise across GPUs, immaterial to the
 mechanism conclusions (M2-dominant in 6/7) and to the three-regime causal split
 (its carriers drift ≤ 1.2 pp). The **pre-registered E5 seed-repeats variant** is
 the formal robustness check for grading noise. `check_e2_repro.py` returns exit 0
-(exact), 3 (self-consistent with drift — researcher judges), or 2 (self-inconsistent
-— a real bug).
+(exact), 3 (self-consistent with drift - researcher judges), or 2 (self-inconsistent
+- a real bug).
 
 ## J. Head-set determinacy: gemma2's k = 10 null is not interpretable
 
@@ -227,7 +227,7 @@ heads at score 1.000:
 
 | model | heads @ 1.000 | is the k=10 cut inside a tie? |
 |---|---|---|
-| **gemma2_9b_it** | **13** | **yes — 10 of 13 admitted by sort order** |
+| **gemma2_9b_it** | **13** | **yes - 10 of 13 admitted by sort order** |
 | olmo2_7b_instruct | 5 | yes (milder) |
 | mistral7b_v03 | 4 | no |
 | qwen25_3b | 3 | no |
@@ -237,16 +237,16 @@ heads at score 1.000:
 
 For gemma2 the top-10 "retrieval heads" are **10 arbitrary members of a 13-way
 tie**, selected by `(layer, head)` sort order rather than by evidence. Its k = 10
-null therefore says nothing about whether gemma2's retrieval heads are causal —
+null therefore says nothing about whether gemma2's retrieval heads are causal -
 it says we patched an arbitrary subset of the indistinguishable ones.
 
-**Consequence.** The earlier reading — *"gemma2 is the M1-silence model whose
-retrieval heads are not causal"* — is **withdrawn**. It was premature, exactly as
+**Consequence.** The earlier reading - *"gemma2 is the M1-silence model whose
+retrieval heads are not causal"* - is **withdrawn**. It was premature, exactly as
 flagged. **Resolved by the k-extension and the full-set patch** (§H): gemma2's break
 is BH-significant from k = 10 (its first non-tie-confounded k) and sub-margin through
 k = 30, but at its **full 77-head set the break flip is 0.478, margin +0.438**, which
 clears the 20 pp margin decisively. So gemma2 is **redundant-causal** (it was
-under-dosed at k ≤ 30), **not** the sub-margin case it looked like — and it must be
+under-dosed at k ≤ 30), **not** the sub-margin case it looked like - and it must be
 read only from k ≥ 20 (past the tie). By contrast llama3.1's full 39-head set stays
 sub-margin (margin +0.083), so llama3.1 is the **unique genuine dissociation**.
 gemma2's distinctive non-M2 profile is *plausibly related to* its softcap +
@@ -263,14 +263,14 @@ set), so runs stay reproducible; it is *arbitrary*, not unstable. Tests:
 
 The eager-reference gate (manual attention row vs the model's own
 `output_attentions` row) is the sole evidence that every downstream mass number is
-trustworthy. It was **printed to notebook stdout and never persisted** — it died
+trustworthy. It was **printed to notebook stdout and never persisted** - it died
 with the Colab session, and no reviewer could audit it.
 
 Notebook 00 now writes `gate_eager_reference.json` (per model: effective attention
 implementation, dtype, per-head and worst-case `max_abs_diff`, tolerance, pass
 flag, model SHA, git commit, timestamp).
 
-Gate result of record — **fp32, tolerance 1e-3, 7/7 PASS**, run 2026-07-08:
+Gate result of record - **fp32, tolerance 1e-3, 7/7 PASS**, run 2026-07-08:
 
 | model | eff. attn | max abs diff |
 |---|---|---|
@@ -282,13 +282,13 @@ Gate result of record — **fp32, tolerance 1e-3, 7/7 PASS**, run 2026-07-08:
 | olmo2_7b_instruct | eager | 3.58e-07 |
 | qwen25_7b_instruct | eager | 5.66e-07 |
 
-Worst case 5.7e-07 — roughly four orders of margin under the gate. This covers the
+Worst case 5.7e-07 - roughly four orders of margin under the gate. This covers the
 three architectures where the manual row could plausibly have been wrong: gemma2
 (logit softcapping + `query_pre_attn_scalar`), olmo2 (QK-norm before RoPE) and
 phi3 (fused QKV + partial rotary). The gate **must be run in fp32**: in bf16 the
 machine epsilon (~4e-3) exceeds the tolerance and the gate fails spuriously.
 
-## M. Patch site generalised to v / mlp — EXPLORATORY follow-up
+## M. Patch site generalised to v / mlp - EXPLORATORY follow-up
 
 **Motivation.** The pre-registered patch site is `z_h` (the per-head output before
 `o_proj`). llama3.1 stays sub-margin on `break` even at its full 39-head set (§H
@@ -296,17 +296,17 @@ full-set result), i.e. the retrieval-head *outputs* are not the bottleneck. The
 open question is *where* the bottleneck is. Two candidate downstream sites are
 added as an exploratory follow-up:
 
-* **`v`** — a **KV-cache swap**. The retrieval heads' value vectors at the
+* **`v`** - a **KV-cache swap**. The retrieval heads' value vectors at the
   **context span positions** (needle + distractor spans) are replaced with the
   donor's, because retrieval reads V from the cached context, not from the answer
   step. GQA-aware: a query head maps to its KV head (`kv = h // (n_q/n_kv)`), so a
   retrieval head patches the shared KV slice; the output records `kv_heads_patched`
   and `query_heads_affected` (the GQA side-effect count). Control = the same number
   of KV heads from **outside** the retrieval KV set, cache-swapped. Not supported on
-  fused-qkv models (phi3) — flagged.
+  fused-qkv models (phi3) - flagged.
 
   **Correction, recorded not hidden.** The **first** v implementation patched the
-  **generation-step** `v_proj` output — **structurally null**: retrieval never reads
+  **generation-step** `v_proj` output - **structurally null**: retrieval never reads
   that value (it reads the *cached context* V), so the intervention could not fire.
   It was run once, the results were invalid, and they are **discarded**; the archive
   records the fact here rather than keeping wrong numbers. Replaced with the
@@ -315,7 +315,7 @@ added as an exploratory follow-up:
   target tensor; self-patch alone cannot catch a hook that never writes). The
   non-z_h checkpoint fingerprint includes `patching.py`, so the fix auto-invalidates
   the old (null) v checkpoints while the completed z_h sweep is untouched.
-* **`mlp`** — the layer's whole MLP output at the answer step. Not head-indexed; the
+* **`mlp`** - the layer's whole MLP output at the answer step. Not head-indexed; the
   control is `|L_ret|` random *other* layers' MLP (recorded, capped by layers
   available). Its mechanism is unchanged from the first commit.
 
@@ -340,20 +340,20 @@ qwen2.5-3b-v must fire before llama-v.
 
 **Result (run on the fixed code, exploratory).**
 
-*v — value cache-swap is CONFOUNDED, reported as a caution, not circuit evidence.*
+*v - value cache-swap is CONFOUNDED, reported as a caution, not circuit evidence.*
 The swap fires strongly but **break-only**: qwen2.5-3b k=30 `break` = 0.989
 (control 0.549), llama3.1 k=39 `break` = **1.000** (control 0.098) with `repair` =
 **0.000**. This asymmetry is the signature of **content transport**: replacing the
 needle/distractor **value** vectors literally substitutes the answer content, so a
 success is destroyed (break → 1) but a failure is not repaired (repair → 0). It
 therefore does **not** isolate a value *pathway*; it is reported as a methodological
-caution. (The self-patch and never-op guards confirm the mechanism is real — the
+caution. (The self-patch and never-op guards confirm the mechanism is real - the
 confound is scientific, not a code bug.)
 
-*mlp — the interpretable downstream site. Bidirectional on the causal model, null on
+*mlp - the interpretable downstream site. Bidirectional on the causal model, null on
 llama3.1.* qwen2.5-3b: `break` 0.28→0.38 and `repair` ~0.34, both well over their
-~0.04–0.09 controls — the retrieval-head layers' MLP is causally involved.
-**llama3.1: null** — `break` 0.13 vs control 0.13, `repair` 0.10 vs control ~0.13,
+~0.04-0.09 controls - the retrieval-head layers' MLP is causally involved.
+**llama3.1: null** - `break` 0.13 vs control 0.13, `repair` 0.10 vs control ~0.13,
 margin ≈ 0, **over all 12 of its retrieval-head layers** (k=39). 
 
 **Conclusion.** llama3.1's failure is **not localised to the retrieval-head circuit
@@ -361,7 +361,7 @@ at either interpretable site**: not the head outputs (`z_h`, even at the full
 39-head set, §H) and not their layers' MLP (all 12 layers). The dissociation holds
 across two intervention points; the value site is uninterpretable (content-transport
 confound). This is an honest *strengthening* of the dissociation, not the positive
-localisation an effect would have given — reported as such, exploratory.
+localisation an effect would have given - reported as such, exploratory.
 
 ## L. Status of every run, and the order of operations
 
@@ -370,11 +370,11 @@ without a commit is a pilot.
 
 | # | status |
 |---|---|
-| A–E, G | in force |
+| A-E, G | in force |
 | F (M2 floor) | **frozen at 0.10**; alternative floor → E5 sensitivity only |
 | H (k=20/30) | **exploratory** |
 | I (pair set) | code fixed; requires the config-identical E2 re-run (nb 09) |
-| J (gemma ties) | diagnostic added; gemma2 resolved — redundant at the full 77-head set (§J) |
+| J (gemma ties) | diagnostic added; gemma2 resolved - redundant at the full 77-head set (§J) |
 | K (gate) | **passed**, now persisted |
 | M (v/mlp sites) | **exploratory**; code + tests in; positive control (qwen2.5-3b) gates the llama3.1 read |
 

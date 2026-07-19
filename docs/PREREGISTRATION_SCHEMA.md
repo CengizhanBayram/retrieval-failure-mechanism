@@ -3,19 +3,19 @@
 > **This file is authored and committed BY THE RESEARCHER, before any analysis
 > runs.** The codebase never creates, modifies, or defaults it (task §1.2). On a
 > missing file or any missing/`null` key, `failure_mech.prereg.load_prereg`
-> raises `PreregError` naming the exact key and every script exits nonzero — no
+> raises `PreregError` naming the exact key and every script exits nonzero - no
 > results are produced. This document describes the required keys and their
 > semantics so you can author the file; it deliberately supplies **no numeric
-> values** (every value below is `<FILL>` — a placeholder that fails the gate
+> values** (every value below is `<FILL>` - a placeholder that fails the gate
 > until you replace it with your pre-registered decision).
 
 The gate checks presence of all keys in `failure_mech.prereg.REQUIRED_KEYS`.
 The classifier (`classify.py`) additionally reads the sub-fields documented under
-`signature_rules.*` — if you name a bucket in `mode_precedence`, provide its rule
+`signature_rules.*` - if you name a bucket in `mode_precedence`, provide its rule
 block.
 
 ```yaml
-# configs/preregistration.yaml  —  RESEARCHER-AUTHORED. Replace every <FILL>.
+# configs/preregistration.yaml  -  RESEARCHER-AUTHORED. Replace every <FILL>.
 
 sampling:
   stage1_n_per_cell: <FILL>              # E1 stage-1 samples per cell (int)

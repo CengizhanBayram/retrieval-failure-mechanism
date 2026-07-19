@@ -1,9 +1,9 @@
-# Limitations — catalogue (draft for the paper)
+# Limitations - catalogue (draft for the paper)
 
 > Drafted by the assistant for the researcher to audit. It collects every caveat
 > surfaced during the confirmatory run, each with its **evidence + magnitude**,
 > **how the design addresses it**, and **where it appears**. Measurement/record
-> only — it states the caveats, it does not argue what the results *mean*.
+> only - it states the caveats, it does not argue what the results *mean*.
 >
 > Cross-references: `docs/AMENDMENT_2026-07-13.md` (status of each run),
 > `scripts/check_e2_repro.py` (the reproduction check), the E5 notebook (the
@@ -18,7 +18,7 @@ number of marginal samples between runs, changing which samples become matched
 pairs.
 
 **Evidence (2026-07-17, re-run vs the pre-fix artifacts).** 6/7 models drift by
-**~1–2 % of pairs**; the resulting **sample-level bucket-rate drift is ≤ 2.9 pp**:
+**~1-2 % of pairs**; the resulting **sample-level bucket-rate drift is ≤ 2.9 pp**:
 
 | model | bucket drift | pairs old→new |
 |---|---|---|
@@ -36,7 +36,7 @@ pass changes left-padding) **and** cross-session GPU kernel nondeterminism
 exactly because both its runs were on the same 80 GB GPU.
 
 **How addressed.** E3/E4 consume E2's recorded `pairs_by_cell`, so causality is
-measured on exactly the sample E2 classified — **self-consistency holds for all 7
+measured on exactly the sample E2 classified - **self-consistency holds for all 7
 models** (`pairs_by_cell == pairs_used`), independent of run-to-run
 reproducibility. The pre-registered **E5 seed-repeats** variant is the formal
 robustness check (mean ± range, R_self). `check_e2_repro.py` verifies
@@ -54,7 +54,7 @@ amendment §I.
 difficulty, because few cells land in the breaking band.
 
 **Evidence.** `pairs_used`: mistral 956, olmo2 839, llama 701, phi 695,
-qwen2.5-3b 450, gemma2 625, **qwen2.5-7b 113** — an 8× spread.
+qwen2.5-3b 450, gemma2 625, **qwen2.5-7b 113** - an 8× spread.
 
 **Consequence.** qwen2.5-7b's causal estimates rest on the smallest sample, drift
 the most (§A, 2.9 pp), and its break effect only meets the margin at the highest
@@ -73,7 +73,7 @@ be read as suggestive.
 
 **Consequence.** The pre-registered result (k ≤ 10) is **3/7 causal** on the break
 direction (olmo2, phi, qwen2.5-3b). The extension adds mistral and qwen2.5-7b
-(break effect first meets margin at k = 30) — this "redundant-causal" verdict is
+(break effect first meets margin at k = 30) - this "redundant-causal" verdict is
 **exploratory** and labelled so.
 
 **How addressed.** Labelled exploratory in `configs/e3.yaml`, the notebook filename
@@ -109,7 +109,7 @@ of all `distractor_hit` failures as M2.
 
 **Consequence.** The M2 rate is floor-sensitive; a higher floor lowers it.
 
-**How addressed.** The floor is **kept frozen** at the pre-registered 0.10 —
+**How addressed.** The floor is **kept frozen** at the pre-registered 0.10 -
 changing it after seeing the bucket rates would be HARKing (amendment §F). An
 alternative floor (0.15) is reported as the **E5 `m2sens` sensitivity variant**,
 side by side with the primary, and the permissiveness is stated as this limitation.
@@ -120,12 +120,12 @@ without `--tag`.
 
 ## F. The M2 signature is argmax-head-specific for 5/7 models (detector-dependent)
 
-**What.** The head set is Part-2's **argmax** (attention-based) detector at seed 42;
-Part-3 never re-detects. The **E5 `wu` variant** re-runs E2 on the Wu/copy-score
+**What.** The head set is the prior detector's **argmax** (attention-based) detector at seed 42;
+this study never re-detects. The **E5 `wu` variant** re-runs E2 on the Wu/copy-score
 head list to test whether the mechanism survives a different definition of
 "retrieval head".
 
-**Result (E5 `wu`, all 7 models — sample-level dominant bucket, argmax → copy).**
+**Result (E5 `wu`, all 7 models - sample-level dominant bucket, argmax → copy).**
 
 | model | argmax M2 | copy M2 | copy dominant | M2 detector-robust? |
 |---|---|---|---|---|
@@ -142,7 +142,7 @@ the Qwen family** (2/7). For the other five it is **specific to the argmax
 (attention-based) heads**: the copy-score heads instead fail by **residual
 attenuation** (mistral, olmo2, phi3.5) or **silence** (llama3.1, gemma2). So "when a
 model fails, its retrieval heads show distractor-capture" is a property of *how the
-retrieval head is defined*, for most of the panel — it does not generalise across
+retrieval head is defined*, for most of the panel - it does not generalise across
 detector choices.
 
 **How this bounds the claims.** The **causal** result (E3/E4) is measured on argmax
@@ -176,7 +176,7 @@ detector-independence robustness claim is **not** supported and must not be made
   "today" stay deterministic; date-conditional behaviour is not probed.
 * **Resource / attention-backend caveat (not scientific).** gemma2 and phi3.5 are
   forced to **eager** attention (softcap correctness / no sdpa kernel in the pinned
-  transformers) and need an **A100 80 GB** — eager materialises the full L×L
+  transformers) and need an **A100 80 GB** - eager materialises the full L×L
   attention matrix, which OOMs a 40 GB card at the panel's long contexts. The one
   documented OOM fallback (16384 → 12288) does not rescue eager at 40 GB.
 
@@ -186,14 +186,14 @@ detector-independence robustness claim is **not** supported and must not be made
 
 Recorded so these are not re-raised:
 
-* **Capture correctness** — the manual attention row matches the model's own eager
+* **Capture correctness** - the manual attention row matches the model's own eager
   `output_attentions` to ≤ 5.66e-07 (fp32, 7/7), covering gemma2 softcap, olmo2
   QK-norm, phi3 partial rotary. Persisted as `gate_eager_reference.json`.
-* **Self-patch** — patching a recipient with its own donor is a token-identical
+* **Self-patch** - patching a recipient with its own donor is a token-identical
   no-op for every model (`self_patch_ok = true` throughout).
-* **No-patch determinism** — the no-patch control flip is ~0.
-* **E2 ↔ E3 same sample** — guaranteed by construction via `pairs_by_cell`
+* **No-patch determinism** - the no-patch control flip is ~0.
+* **E2 ↔ E3 same sample** - guaranteed by construction via `pairs_by_cell`
   (self-consistency PASS 7/7), not by run-to-run reproducibility.
-* **Control subtraction** — a causal `effect` requires the break flip to beat the
+* **Control subtraction** - a causal `effect` requires the break flip to beat the
   random-control flip by the pre-registered margin (20 pp) *and* survive BH, so the
   high-k effects are specific, not "patching many heads breaks anything."

@@ -1,34 +1,33 @@
-# retrieval-failure-mechanism (Part 3)
+# retrieval-failure-mechanism
 
 **When a long-context language model *fails* to retrieve a fact, what breaks at the
-retrieval-head level — and is that broken thing the *cause* of the failure, or just
+retrieval-head level - and is that broken thing the *cause* of the failure, or just
 a visible correlate?**
 
 Retrieval-head *profiling* work (which head attends the needle, how strongly) is
-correlational. This suite adds the missing half — **causal verification by
-bidirectional activation patching** — across a 7-model panel, and finds that the
+correlational. This suite adds the missing half - **causal verification by
+bidirectional activation patching** - across a 7-model panel, and finds that the
 visible mechanism and the causal weight **come apart**.
 
-> **Bottom line.** Distractor-capture (**M2** — the retrieval head attends the wrong,
+> **Bottom line.** Distractor-capture (**M2** - the retrieval head attends the wrong,
 > distractor token) is the common failure *mechanism* (6 of 7 models). But the
-> *causal weight* of the retrieval heads — how much you must patch before retrieval
-> actually breaks — is **graded by model and uncorrelated with the mechanism
+> *causal weight* of the retrieval heads - how much you must patch before retrieval
+> actually breaks - is **graded by model and uncorrelated with the mechanism
 > strength**: from a handful of heads sufficing (qwen2.5-3b) through
 > many-heads-redundant (mistral, gemma2) to **significant-but-below-threshold even
 > when the entire detected head set is patched** (llama3.1). The M2 rate does not
-> predict the causal architecture. That gap — *visible signature vs graded causal
-> weight* — is exactly what profiling cannot see. The full numbers are in
+> predict the causal architecture. That gap - *visible signature vs graded causal
+> weight* - is exactly what profiling cannot see. The full numbers are in
 > [`docs/FINDINGS.md`](docs/FINDINGS.md); the paper argues significance.
 
-This repo is **inference-only** and built **on top of** two prior repos, which it
-imports and never edits:
+This is a **standalone study**. It is **inference-only** and reuses two prior repos
+purely as infrastructure, importing them and never editing them:
 
-- **Part 1** — *Does RoPE Prevent or Degrade Retrieval Heads?* — provides `src/`
-  (model loader, activation patching, statistics).
-- **Part 2** — *retrieval-head-profile* (`rhp/`) — provides the **pinned model
-  registry** (`configs/panel.yaml`: commit SHAs + `rope_theta`) and the **detection
-  artifacts** (`datas/results/profile/{model}_seed{seed}.json`, the ranked
-  retrieval-head lists). Part 3 **never re-detects** — it consumes these.
+- a **model-loading / activation-patching / statistics** library (provides `src/`);
+- a **retrieval-head detector** (`rhp/`), which provides the pinned model registry
+  (`configs/panel.yaml`: commit SHAs + `rope_theta`) and the detection artifacts
+  (`datas/results/profile/{model}_seed{seed}.json`, the ranked retrieval-head
+  lists). This study **never re-detects**; it consumes these.
 
 Everything is gated on a **researcher-authored pre-registration**, every number
 carries a **provenance record**, and no module in the package *interprets* a result:
@@ -41,7 +40,7 @@ the code measures, the docs and the paper interpret.
 A **probe** places a needle fact (an access code bound to an adjective+noun object)
 in a long filler context, optionally alongside **distractors** (same-shell objects
 with different codes), and asks for the code. When the model answers wrong, the
-failure is classified — at the model's own **retrieval heads** — into one of four
+failure is classified - at the model's own **retrieval heads** - into one of four
 mechanistic buckets:
 
 | bucket | meaning |
@@ -49,7 +48,7 @@ mechanistic buckets:
 | **M1 · silence** | the head barely attends the needle (low needle mass) and nothing else |
 | **M2 · distractor-capture** | the head attends a **distractor** instead of the needle |
 | **correct-attend** | the head *does* attend the needle, yet the answer is wrong (loss is downstream) |
-| **residual** | diffuse attenuation — no dominant target |
+| **residual** | diffuse attenuation - no dominant target |
 
 Profiling stops at "which bucket." The causal question is: **if you overwrite those
 heads' activations with a donor's (from a paired success/failure), does the
@@ -80,7 +79,7 @@ chat template.
 **Why gemma2 and phi3 need 80 GB.** Both are forced to **eager** attention (gemma2
 because sdpa silently drops its logit-softcapping; phi3 because the pinned
 transformers has no phi3 sdpa kernel). Eager materialises the full `L×L` attention
-matrix inside the model's own forward — ~18 GB at the panel's long contexts, which
+matrix inside the model's own forward - ~18 GB at the panel's long contexts, which
 OOMs a 40 GB card. The five sdpa models fit on 40 GB. All shipped notebooks are
 A100-tagged because a mixed-panel run must satisfy the largest requirement.
 
@@ -90,37 +89,37 @@ family is validated by the **eager-reference gate** below (< 1e-3, fp32).
 
 ---
 
-## 3. The experiment pipeline — what each step measures and *why*
+## 3. The experiment pipeline - what each step measures and *why*
 
 The pipeline is a funnel: find *where* models fail → *how* they fail → whether that
 is *causal* → aggregate the decision → check it is *robust* → (follow-ups) localise
 the bottleneck. Order matters: **E2 needs E1, E3 needs E2, E4/E5 need E2/E3.**
 
-### E1 — Breaking surface  ·  `scripts/e1_breaking_surface.py`
+### E1 - Breaking surface  ·  `scripts/e1_breaking_surface.py`
 **Measures:** for each grid cell (context length × needle position × distractor
 count × distractor similarity), the greedy-decoding accuracy, with Wilson CIs; a
 cell is **breaking** if its accuracy lands in the pre-registered band (not ceiling,
 not total collapse).
 **Why:** the mechanism is only interesting on *genuine* failures. E1 finds them and
 excludes both the trivial (ceiling) and the confounded (total positional-OOD
-collapse *beyond* a model's context window — the **in-window / beyond-window** rule).
+collapse *beyond* a model's context window - the **in-window / beyond-window** rule).
 The confirmatory grid enables the **`shell_share`** difficulty (a distractor reuses
 the needle's adjective *or* noun), which is what breaks the strong models *in-window*.
 Two-stage and resumable; records `oom_fallback_applied` for the one permitted
 16384→12288 fallback.
 
-### E2 — Signatures  ·  `scripts/e2_signatures.py`
+### E2 - Signatures  ·  `scripts/e2_signatures.py`
 **Measures:** within breaking cells, forms matched **success ↔ failure pairs**
 (identical token skeleton), computes the manual attention rows for the target heads,
 and classifies each failure into the four buckets; emits per-head paired statistics
 (permutation p, Cliff's δ, BH) and the sample-level bucket rates.
-**Why:** this is the mechanism half — "how do they fail." It also **records
+**Why:** this is the mechanism half - "how do they fail." It also **records
 `pairs_by_cell`** (the exact matched-pair sample indices) so E3 measures causality on
-*exactly* the sample E2 measured the mechanism on (see §I of the amendment — this
+*exactly* the sample E2 measured the mechanism on (see §I of the amendment - this
 fixed a real 614-vs-625 pair-set drift).
 
-### E3 — Causality  ·  `scripts/e3_causal.py`
-**Measures:** over E2's pairs, for each head-set size *k*, five runs per pair —
+### E3 - Causality  ·  `scripts/e3_causal.py`
+**Measures:** over E2's pairs, for each head-set size *k*, five runs per pair -
 **repair** (failure ← success donor), **break** (success ← failure donor),
 **random-control** (same *k*, non-retrieval heads), **no-patch rerun** (flip base
 rate), and a **self-patch no-op** (recipient ← its own activation, which *must* be
@@ -129,21 +128,21 @@ margin (flip − control), the permutation p, and BH.
 **Why:** this is the causal half. **`break`** asks "does removing the retrieval-head
 signal break a working retrieval?"; **`repair`** asks "does injecting it fix a broken
 one?". The **random control** and the pre-registered **20 pp margin** guard against
-the trivial "patching many heads disrupts anything" — an effect must beat the control
+the trivial "patching many heads disrupts anything" - an effect must beat the control
 by ≥ 20 pp *and* survive BH.
 Checkpointed per *k* (a killed session loses at most one *k*); `--max-hours` stops
 cleanly on a *k* boundary; donors are captured once per probe over the union of head
 sets and sliced per *k* (proven bitwise-identical, `tests/test_donor_slicing.py`).
 
-### E4 — Family table + authoritative decision  ·  `scripts/e4_families.py`
+### E4 - Family table + authoritative decision  ·  `scripts/e4_families.py`
 **Measures:** aggregates E2 + E3 across the panel and computes the **authoritative
 BH** across {models × directions} per *k*; the causal decision is
-`effect = bh_rejected AND margin_met`. Loads no weights (config + JSON only) — runs
+`effect = bh_rejected AND margin_met`. Loads no weights (config + JSON only) - runs
 on CPU in minutes.
 **Why:** multiple-comparison control must be done once, across the whole family, not
 per model. E4 is where a raw flip rate becomes a pre-registered *decision*.
 
-### E5 — Robustness  ·  `scripts/e5_robustness.py`
+### E5 - Robustness  ·  `scripts/e5_robustness.py`
 **Measures:** re-runs E2 under perturbations, each a **tagged** artifact that never
 overwrites the primary: **`wu`** (the Wu/copy-head detector instead of argmax),
 **`ksens`** (a different head count), **`steps3`** (averaging masses over 3 answer
@@ -153,26 +152,26 @@ alternative M2 floor, side-by-side with the frozen one).
 answer step, the seed, or the M2 threshold. `wu` is the primary check (does the
 mechanism survive a *different definition* of "retrieval head"?).
 
-### Follow-up A — Full-set patch (amendment §H)  ·  `--extra-k`, notebook 13
+### Follow-up A - Full-set patch (amendment §H)  ·  `--extra-k`, notebook 13
 **Why:** llama3.1 and gemma2 are BH-significant on `break` but stay below the 20 pp
-margin through k=10. A reviewer can object: *maybe that null is under-dosing — you
+margin through k=10. A reviewer can object: *maybe that null is under-dosing - you
 only patched 10 of their 39 / 77 detected heads.* This patches the **entire detected
 set** (`--extra-k 39` / `77`) on the CLI, without touching the config or the completed
 z_h checkpoints. **Result:** llama3.1 stays sub-margin at 39/39 (+0.083) → the
 dissociation is *not* under-dosing; gemma2 clears the margin at 77/77 (+0.438) → it
 *was* under-dosed and is redundant-causal, reclassified out of the dissociation bin.
 
-### Follow-up B — Value / MLP patch site (amendment §M)  ·  `--site`, notebook 14
+### Follow-up B - Value / MLP patch site (amendment §M)  ·  `--site`, notebook 14
 **Why:** since llama3.1's head *outputs* (`z_h`) are not the bottleneck even at the
 full set, *where* is it? The patch site is moved downstream: **`v`** (the value
-vectors — a **KV-cache swap** at the needle/distractor context positions, which is
+vectors - a **KV-cache swap** at the needle/distractor context positions, which is
 what retrieval actually reads) and **`mlp`** (the layer's whole MLP output).
 **Result:** the value swap is **confounded by content transport** (swapping the
 needle's value literally swaps the answer → break-only 1.000/0.000) and is reported
 as a *caution*, not circuit evidence; **mlp** is bidirectional on the causal model
 (qwen2.5-3b) but **null for llama3.1 over all 12 of its head-layers**. So llama3.1's
 failure is not localised to the retrieval-head circuit at either *interpretable* site
-— the dissociation holds across two intervention points.
+- the dissociation holds across two intervention points.
 
 ---
 
@@ -182,7 +181,7 @@ failure is not localised to the retrieval-head circuit at either *interpretable*
 llama/qwen7b/olmo 0.62, phi 0.57; gemma2 is the outlier (residual/M1, M2 only 0.14).
 
 **Causal weight (E3/E4, `break` direction).** Every model's break is BH-significant
-by k=5–10 (**no model is causally inert**); what varies is *how much* you must patch
+by k=5-10 (**no model is causally inert**); what varies is *how much* you must patch
 to clear the 20 pp margin:
 
 | regime | models | reading |
@@ -191,7 +190,7 @@ to clear the 20 pp margin:
 | **redundant-causal** (many heads) | mistral & qwen2.5-7b (k=30), gemma2 (full 77-set) | exploratory (k>10) |
 | **dissociation** (sub-margin at the full set) | **llama3.1** | the unique case |
 
-**The central claim:** the M2 rate is **uncorrelated** with the causal architecture —
+**The central claim:** the M2 rate is **uncorrelated** with the causal architecture -
 the lowest-M2 model (gemma2, 0.14) and the highest-M2 model (mistral, 0.84) are *both*
 redundant; the mid-M2 llama3.1 (0.62) is the lone dissociation.
 
@@ -225,13 +224,13 @@ This suite is built so a reviewer can trust each number without re-running it.
   byte-hash of every config, model key + pinned SHA, seeds, timestamp, platform,
   packages. Any number is auditable back to what produced it. The same hashes drive
   **resume freshness** (a run is skipped only if its recorded config hashes still
-  match the configs on disk — not merely because an output file exists).
+  match the configs on disk - not merely because an output file exists).
 - **Self-patch no-op** (recipient ← own activation → token-identical) **and a
   never-op detector** (a *foreign* donor must actually change the target tensor) are
   enforced per site; the run aborts on failure. These caught the first value-site
   implementation, which was structurally null (§M).
 - **Control + margin.** A causal `effect` requires beating the random control by
-  ≥ 20 pp *and* BH significance — so a high flip at large *k* is not mistaken for a
+  ≥ 20 pp *and* BH significance - so a high flip at large *k* is not mistaken for a
   specific effect.
 - **Capture-correctness gate.** The manual attention row is validated against the
   model's own eager `output_attentions` to ≤ 5.66e-07 (fp32, 7/7), persisted as
@@ -242,7 +241,7 @@ This suite is built so a reviewer can trust each number without re-running it.
   floating-point, which does not change token-skeleton alignment or the decision
   rules. E3 measures causality on **exactly** E2's recorded pairs (`pairs_by_cell`).
 - **Memory rule.** Never `output_attentions=True` in an experiment, never materialise
-  a full `L×L` matrix — attention rows are computed manually for the target heads
+  a full `L×L` matrix - attention rows are computed manually for the target heads
   only. (The gate above is the *only* place `output_attentions` runs, in tests.)
 
 ---
@@ -271,7 +270,7 @@ scripts/
   check_e2_repro.py               # offline reproduction check (no GPU)
   _common.py                      # config load, checkpoints, freshness, time-guard
 notebooks/
-  build_notebooks.py              # the GENERATOR — edit here, never the .ipynb
+  build_notebooks.py              # the GENERATOR - edit here, never the .ipynb
   00_A100_setup_and_guardrails … 14_A100_e3_patch_sites   # GPU/CPU tag in each name
 tests/                            # 80 pytest guardrails
 docs/
@@ -282,7 +281,7 @@ docs/
 rfm_results/                      # the published result JSONs (see §8)
 ```
 
-Notebooks are **generated** from `notebooks/build_notebooks.py` — edit the generator
+Notebooks are **generated** from `notebooks/build_notebooks.py` - edit the generator
 and regenerate; never hand-edit the `.ipynb`. Each filename carries the runtime it
 needs (`_A100_` / `_CPU_`).
 
@@ -290,7 +289,7 @@ needs (`_A100_` / `_CPU_`).
 
 ## 7. Reproduce
 
-### Local (tests, planning, offline checks — no GPU)
+### Local (tests, planning, offline checks - no GPU)
 ```bash
 pip install -r requirements.txt          # install a CUDA-matched torch wheel first (see file)
 export RHP_PART1_REPO=/path/to/Does-RoPE-...-Model-Families
@@ -360,9 +359,9 @@ in [`docs/FINDINGS.md`](docs/FINDINGS.md).
 
 | doc | read it for |
 |---|---|
-| [`docs/FINDINGS.md`](docs/FINDINGS.md) | the full results — every table, exploratory labels, confirmatory-vs-exploratory split |
+| [`docs/FINDINGS.md`](docs/FINDINGS.md) | the full results - every table, exploratory labels, confirmatory-vs-exploratory split |
 | [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | every caveat, with evidence, magnitude, and how the design addresses it |
-| [`docs/AMENDMENT_2026-07-13.md`](docs/AMENDMENT_2026-07-13.md) | the dated amendment — the *status* of every run (confirmatory / exploratory / withdrawn), committed before the runs it governs |
+| [`docs/AMENDMENT_2026-07-13.md`](docs/AMENDMENT_2026-07-13.md) | the dated amendment - the *status* of every run (confirmatory / exploratory / withdrawn), committed before the runs it governs |
 | [`docs/PREREGISTRATION_SCHEMA.md`](docs/PREREGISTRATION_SCHEMA.md) | the pre-registration schema |
 
 ---
