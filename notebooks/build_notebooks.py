@@ -1283,6 +1283,112 @@ print('\nEXPLORATORY (k > 10). Report as such.')
 
 
 # ---------------------------------------------------------------------------
+# 14 — value / MLP patch site (llama bottleneck localisation) — EXPLORATORY
+# ---------------------------------------------------------------------------
+
+def nb_14_sites() -> dict:
+    cells = [md(
+        "# 14 · Value / MLP patch site — where is llama3.1's bottleneck?  ·  **EXPLORATORY**  ·  A100 40 GB\n"
+        "llama3.1 stays sub-margin on `break` even patching its **full 39-head set** "
+        "(notebook 13): the retrieval-head *outputs* (`z_h`) are not the bottleneck. "
+        "This asks *where* it is, by moving the patch site downstream:\n"
+        "* **`v`** — the `v_proj` value slice (GQA-aware; a KV slice is shared by the "
+        "query heads that map to it);\n"
+        "* **`mlp`** — the layer's whole MLP output.\n\n"
+        "**Positive control first — non-negotiable.** On qwen2.5-3b (where retrieval "
+        "IS causal), patching `v` / `mlp` of the retrieval heads must produce a "
+        "substantial effect. If it does not — or if any `self_patch_ok` is false — the "
+        "hook is on the wrong tensor; **stop and fix before trusting any llama3.1 "
+        "null.** `--site v/mlp` writes a separate `*_site-*.json` and never touches the "
+        "pre-registered z_h run. preregistration.yaml untouched; every result here is "
+        "exploratory (amendment §M).")]
+    cells += setup_cells()
+    cells.append(md("## 1) shell_share must match the grid E1/E2/E3 used"))
+    cells.append(SHELL_SHARE_CELL)
+    cells.append(md(
+        "## 2) POSITIVE CONTROL — qwen2.5-3b at sites v and mlp (must show an effect)"))
+    cells.append(code(r"""
+run(['scripts/e3_causal.py', '--model', 'qwen25_3b_instruct',
+     '--site', 'v',   '--tag', 'site-v',   '--k-list', '10', '30'])
+run(['scripts/e3_causal.py', '--model', 'qwen25_3b_instruct',
+     '--site', 'mlp', '--tag', 'site-mlp', '--k-list', '10', '30'])
+"""))
+    cells.append(md("## 3) Gate — did the positive control pass? (self-patch + non-trivial effect)"))
+    cells.append(code(r"""
+import json, os
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+
+def read_break(model, tag):
+    p = f'{RESULTS_DIR}/e3_causal_{model}_{tag}.json'
+    if not os.path.exists(p): return None
+    d = json.load(open(p))['k']
+    rows = {}
+    for k, kd in d.items():
+        rows[k] = {
+            'break': kd['break']['flip_rate'],
+            'ctrl': kd['random_control']['break']['flip_rate'],
+            'margin': kd['margins']['break']['flip_minus_control'],
+            'meets': kd['margins']['break']['meets_margin'],
+            'p': kd['p_values']['break'],
+            'bh': kd['bh_rejected']['break'],
+            'self_ok': kd['self_patch_ok'],
+        }
+    return rows
+
+ok = True
+for tag in ['site-v', 'site-mlp']:
+    r = read_break('qwen25_3b_instruct', tag)
+    if not r:
+        print(f'qwen3b {tag}: NO OUTPUT'); ok = False; continue
+    best = max(v['margin'] for v in r.values())
+    self_ok = all(v['self_ok'] for v in r.values())
+    print(f'qwen3b {tag:9s} best break-margin over k = {best:+.3f}  self_patch_ok={self_ok}')
+    if not self_ok:
+        print('   *** self_patch_ok FALSE — the hook is wrong. STOP. ***'); ok = False
+    elif best < 0.10:
+        print('   *** effect trivial (<0.10) on a causal model — hook likely wrong. INVESTIGATE before llama. ***'); ok = False
+if ok:
+    print('\nPOSITIVE CONTROL PASSED — proceed to llama3.1.')
+else:
+    print('\nPOSITIVE CONTROL FAILED — do NOT run/trust llama below until fixed.')
+"""))
+    cells.append(md("## 4) llama3.1 at sites v and mlp (k = 10, 30, and the full set 39)"))
+    cells.append(code(r"""
+run(['scripts/e3_causal.py', '--model', 'llama31_8b_instruct',
+     '--site', 'v',   '--tag', 'site-v',   '--k-list', '10', '30', '--extra-k', '39'])
+run(['scripts/e3_causal.py', '--model', 'llama31_8b_instruct',
+     '--site', 'mlp', '--tag', 'site-mlp', '--k-list', '10', '30', '--extra-k', '39'])
+"""))
+    cells.append(md("## 5) The verdict — is the bottleneck at v or mlp in llama3.1?"))
+    cells.append(code(r"""
+import json, os
+RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
+
+def site_meta(model, tag):
+    p = f'{RESULTS_DIR}/e3_causal_{model}_{tag}.json'
+    return json.load(open(p))['provenance'].get('extra', {}).get('site_meta', {}) if os.path.exists(p) else {}
+
+for model in ['qwen25_3b_instruct', 'llama31_8b_instruct']:
+    print(f'\n=== {model} — BREAK direction, by site ===')
+    for tag, site in [('site-v', 'v'), ('site-mlp', 'mlp')]:
+        r = read_break(model, tag); meta = site_meta(model, tag)
+        if not r: print(f'  {tag}: no output'); continue
+        print(f'  [{site}]  {"k":>4s} {"break":>7s} {"ctrl":>7s} {"margin":>8s} {"20pp":>5s} {"p":>9s} {"units":>22s}')
+        for k in sorted(r, key=int):
+            v = r[k]; m = meta.get(k, {})
+            u = (f'kv={m.get("kv_heads_patched")},q_aff={m.get("query_heads_affected")}'
+                 if site == 'v' else f'layers={m.get("layers_patched")}')
+            print(f'       {k:>4s} {v["break"]:>7.3f} {v["ctrl"]:>7.3f} {v["margin"]:>+8.3f} '
+                  f'{str(v["meets"]):>5s} {v["p"]:>9.1e} {u:>22s}')
+
+print('\n>>> llama3.1: if v or mlp CLEARS the 20pp margin -> bottleneck localised '
+      'downstream (POSITIVE result). If neither -> dissociation holds across three sites.')
+print('EXPLORATORY. Report as such.')
+"""))
+    return notebook(cells)
+
+
+# ---------------------------------------------------------------------------
 # 12 — E2 reproduction check (amendment §I) — CPU only, no model load
 # ---------------------------------------------------------------------------
 
@@ -1392,6 +1498,7 @@ def main():
         "11_A100_e5_robustness.ipynb": nb_11_e5(),
         "12_CPU_repro_check.ipynb": nb_repro_check(),
         "13_A100_e3_fullset_llama_gemma.ipynb": nb_13_fullset(),
+        "14_A100_e3_patch_sites.ipynb": nb_14_sites(),
     }
     # Drop the pre-GPU-tag filenames so the folder never shows two copies.
     for stale in NB_DIR.glob("*.ipynb"):
