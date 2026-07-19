@@ -1,0 +1,1001 @@
+{
+  "provenance": {
+    "script": "scripts/e4_families.py",
+    "code": {
+      "commit": "6ef39acb3ac382aa8837247506afebe202afe04e",
+      "branch": "main",
+      "dirty": false,
+      "repo_root": "/content/rope-part3"
+    },
+    "config_hashes": {
+      "/content/rope-part3/configs/paths.yaml": "e084e49efd9c939e6ba2d76ab9b7cd8f2e05746855f4a9488f3b43de0755e0c3",
+      "/content/rope-part3/configs/e3.yaml": "2607a550cb47c563e755543c96031e769fed6c32912e4d0be2b30ab73a9e0b8c",
+      "/content/rope-part3/configs/preregistration.yaml": "345db496c5721638422a62d5a9ad030e555ef12a1e22b73e61f020779f2c8d7b"
+    },
+    "model_key": null,
+    "model_sha": null,
+    "seeds": null,
+    "timestamp_utc": "2026-07-18T09:59:10.063495+00:00",
+    "platform": "Linux-6.6.122+-x86_64-with-glibc2.35",
+    "packages": {
+      "python": "3.12.13",
+      "numpy": "2.0.2",
+      "scipy": "1.16.3",
+      "torch": "2.11.0+cu128",
+      "transformers": "4.47.0"
+    },
+    "extra": {
+      "models": [
+        "llama31_8b_instruct",
+        "gemma2_9b_it",
+        "mistral_7b_instruct",
+        "qwen25_7b_instruct",
+        "olmo2_7b_instruct",
+        "phi35_mini",
+        "qwen25_3b_instruct"
+      ],
+      "alpha": 0.05,
+      "flip_margin_over_control_pp": 20.0,
+      "bh_scope": "models x directions per k"
+    }
+  },
+  "table": {
+    "llama31_8b_instruct": {
+      "model": "llama31_8b_instruct",
+      "e2_sample_bucket_rates": {
+        "m2_capture": 0.6176890156918687,
+        "m1_silence": 0.1783166904422254,
+        "correct_attend": 0.024251069900142655,
+        "residual": 0.1797432239657632,
+        "window_limited": 0.0
+      },
+      "e2_pairs_used": 701,
+      "e2_crosstab": {
+        "distractor_hit": {
+          "m2_capture": 433,
+          "m1_silence": 125,
+          "correct_attend": 16,
+          "residual": 125,
+          "window_limited": 0
+        },
+        "other_wrong": {
+          "m2_capture": 0,
+          "m1_silence": 0,
+          "correct_attend": 1,
+          "residual": 1,
+          "window_limited": 0
+        }
+      },
+      "e3": {
+        "1": {
+          "repair_flip_rate": 0.009985734664764621,
+          "break_flip_rate": 0.0014265335235378032,
+          "self_patch_ok": true
+        },
+        "5": {
+          "repair_flip_rate": 0.034236804564907276,
+          "break_flip_rate": 0.07275320970042796,
+          "self_patch_ok": true
+        },
+        "10": {
+          "repair_flip_rate": 0.03281027104136947,
+          "break_flip_rate": 0.06704707560627675,
+          "self_patch_ok": true
+        },
+        "20": {
+          "repair_flip_rate": 0.04136947218259629,
+          "break_flip_rate": 0.07703281027104136,
+          "self_patch_ok": true
+        },
+        "30": {
+          "repair_flip_rate": 0.05848787446504993,
+          "break_flip_rate": 0.09985734664764621,
+          "self_patch_ok": true
+        },
+        "39": {
+          "repair_flip_rate": 0.06847360912981455,
+          "break_flip_rate": 0.12553495007132667,
+          "self_patch_ok": true
+        }
+      }
+    },
+    "gemma2_9b_it": {
+      "model": "gemma2_9b_it",
+      "e2_sample_bucket_rates": {
+        "m2_capture": 0.144,
+        "m1_silence": 0.344,
+        "correct_attend": 0.1472,
+        "residual": 0.3648,
+        "window_limited": 0.0
+      },
+      "e2_pairs_used": 625,
+      "e2_crosstab": {
+        "distractor_hit": {
+          "m2_capture": 81,
+          "m1_silence": 201,
+          "correct_attend": 85,
+          "residual": 221,
+          "window_limited": 0
+        },
+        "other_wrong": {
+          "m2_capture": 9,
+          "m1_silence": 14,
+          "correct_attend": 7,
+          "residual": 7,
+          "window_limited": 0
+        }
+      },
+      "e3": {
+        "1": {
+          "repair_flip_rate": 0.0192,
+          "break_flip_rate": 0.016,
+          "self_patch_ok": true
+        },
+        "5": {
+          "repair_flip_rate": 0.0336,
+          "break_flip_rate": 0.0144,
+          "self_patch_ok": true
+        },
+        "10": {
+          "repair_flip_rate": 0.0288,
+          "break_flip_rate": 0.04,
+          "self_patch_ok": true
+        },
+        "20": {
+          "repair_flip_rate": 0.1088,
+          "break_flip_rate": 0.1008,
+          "self_patch_ok": true
+        },
+        "30": {
+          "repair_flip_rate": 0.0928,
+          "break_flip_rate": 0.1168,
+          "self_patch_ok": true
+        },
+        "77": {
+          "repair_flip_rate": 0.0384,
+          "break_flip_rate": 0.4784,
+          "self_patch_ok": true
+        }
+      },
+      "gemma_local_global": {
+        "sliding_window": 4096,
+        "heads": {
+          "L15_H10": "global",
+          "L17_H9": "global",
+          "L18_H3": "local",
+          "L23_H12": "global",
+          "L24_H0": "local",
+          "L24_H10": "local",
+          "L25_H1": "global",
+          "L25_H10": "global",
+          "L26_H11": "local",
+          "L28_H8": "local",
+          "L28_H12": "local",
+          "L30_H9": "local",
+          "L31_H15": "global",
+          "L30_H8": "local",
+          "L25_H11": "global",
+          "L18_H4": "local",
+          "L18_H6": "local",
+          "L26_H12": "local",
+          "L17_H0": "global",
+          "L28_H10": "local",
+          "L18_H5": "local",
+          "L21_H4": "global",
+          "L36_H7": "local",
+          "L19_H8": "global",
+          "L31_H7": "global",
+          "L29_H7": "global",
+          "L20_H9": "local",
+          "L22_H4": "local",
+          "L17_H6": "global",
+          "L25_H13": "global"
+        }
+      }
+    },
+    "mistral_7b_instruct": {
+      "model": "mistral_7b_instruct",
+      "e2_sample_bucket_rates": {
+        "m2_capture": 0.8368200836820083,
+        "m1_silence": 0.0010460251046025104,
+        "correct_attend": 0.08054393305439331,
+        "residual": 0.08158995815899582,
+        "window_limited": 0.0
+      },
+      "e2_pairs_used": 956,
+      "e2_crosstab": {
+        "distractor_hit": {
+          "m2_capture": 795,
+          "m1_silence": 1,
+          "correct_attend": 76,
+          "residual": 78,
+          "window_limited": 0
+        },
+        "other_wrong": {
+          "m2_capture": 5,
+          "m1_silence": 0,
+          "correct_attend": 1,
+          "residual": 0,
+          "window_limited": 0
+        }
+      },
+      "e3": {
+        "1": {
+          "repair_flip_rate": 0.006276150627615063,
+          "break_flip_rate": 0.0020920502092050207,
+          "self_patch_ok": true
+        },
+        "5": {
+          "repair_flip_rate": 0.03347280334728033,
+          "break_flip_rate": 0.030334728033472803,
+          "self_patch_ok": true
+        },
+        "10": {
+          "repair_flip_rate": 0.04707112970711297,
+          "break_flip_rate": 0.051255230125523014,
+          "self_patch_ok": true
+        },
+        "20": {
+          "repair_flip_rate": 0.05543933054393305,
+          "break_flip_rate": 0.05753138075313807,
+          "self_patch_ok": true
+        },
+        "30": {
+          "repair_flip_rate": 0.13389121338912133,
+          "break_flip_rate": 0.28661087866108786,
+          "self_patch_ok": true
+        }
+      }
+    },
+    "qwen25_7b_instruct": {
+      "model": "qwen25_7b_instruct",
+      "e2_sample_bucket_rates": {
+        "m2_capture": 0.6194690265486725,
+        "m1_silence": 0.1592920353982301,
+        "correct_attend": 0.008849557522123894,
+        "residual": 0.21238938053097345,
+        "window_limited": 0.0
+      },
+      "e2_pairs_used": 113,
+      "e2_crosstab": {
+        "distractor_hit": {
+          "m2_capture": 70,
+          "m1_silence": 17,
+          "correct_attend": 1,
+          "residual": 23,
+          "window_limited": 0
+        },
+        "other_wrong": {
+          "m2_capture": 0,
+          "m1_silence": 1,
+          "correct_attend": 0,
+          "residual": 1,
+          "window_limited": 0
+        }
+      },
+      "e3": {
+        "1": {
+          "repair_flip_rate": 0.1415929203539823,
+          "break_flip_rate": 0.008849557522123894,
+          "self_patch_ok": true
+        },
+        "5": {
+          "repair_flip_rate": 0.23893805309734514,
+          "break_flip_rate": 0.061946902654867256,
+          "self_patch_ok": true
+        },
+        "10": {
+          "repair_flip_rate": 0.19469026548672566,
+          "break_flip_rate": 0.05309734513274336,
+          "self_patch_ok": true
+        },
+        "20": {
+          "repair_flip_rate": 0.3008849557522124,
+          "break_flip_rate": 0.10619469026548672,
+          "self_patch_ok": true
+        },
+        "30": {
+          "repair_flip_rate": 0.21238938053097345,
+          "break_flip_rate": 0.4247787610619469,
+          "self_patch_ok": true
+        }
+      }
+    },
+    "olmo2_7b_instruct": {
+      "model": "olmo2_7b_instruct",
+      "e2_sample_bucket_rates": {
+        "m2_capture": 0.6197854588796186,
+        "m1_silence": 0.025029797377830752,
+        "correct_attend": 0.1501787842669845,
+        "residual": 0.20500595947556616,
+        "window_limited": 0.0
+      },
+      "e2_pairs_used": 839,
+      "e2_crosstab": {
+        "distractor_hit": {
+          "m2_capture": 507,
+          "m1_silence": 21,
+          "correct_attend": 115,
+          "residual": 162,
+          "window_limited": 0
+        },
+        "other_wrong": {
+          "m2_capture": 13,
+          "m1_silence": 0,
+          "correct_attend": 11,
+          "residual": 10,
+          "window_limited": 0
+        }
+      },
+      "e3": {
+        "1": {
+          "repair_flip_rate": 0.02026221692491061,
+          "break_flip_rate": 0.013110846245530394,
+          "self_patch_ok": true
+        },
+        "5": {
+          "repair_flip_rate": 0.09892729439809297,
+          "break_flip_rate": 0.13230035756853398,
+          "self_patch_ok": true
+        },
+        "10": {
+          "repair_flip_rate": 0.16567342073897498,
+          "break_flip_rate": 0.21930870083432658,
+          "self_patch_ok": true
+        },
+        "20": {
+          "repair_flip_rate": 0.22169249106078665,
+          "break_flip_rate": 0.3265792610250298,
+          "self_patch_ok": true
+        },
+        "30": {
+          "repair_flip_rate": 0.1466030989272944,
+          "break_flip_rate": 0.6388557806912991,
+          "self_patch_ok": true
+        }
+      }
+    },
+    "phi35_mini": {
+      "model": "phi35_mini",
+      "e2_sample_bucket_rates": {
+        "m2_capture": 0.5712230215827339,
+        "m1_silence": 0.12086330935251799,
+        "correct_attend": 0.04892086330935252,
+        "residual": 0.2589928057553957,
+        "window_limited": 0.0
+      },
+      "e2_pairs_used": 695,
+      "e2_crosstab": {
+        "distractor_hit": {
+          "m2_capture": 396,
+          "m1_silence": 82,
+          "correct_attend": 34,
+          "residual": 177,
+          "window_limited": 0
+        },
+        "other_wrong": {
+          "m2_capture": 1,
+          "m1_silence": 2,
+          "correct_attend": 0,
+          "residual": 3,
+          "window_limited": 0
+        }
+      },
+      "e3": {
+        "1": {
+          "repair_flip_rate": 0.012949640287769784,
+          "break_flip_rate": 0.004316546762589928,
+          "self_patch_ok": true
+        },
+        "5": {
+          "repair_flip_rate": 0.10071942446043165,
+          "break_flip_rate": 0.07625899280575539,
+          "self_patch_ok": true
+        },
+        "10": {
+          "repair_flip_rate": 0.1251798561151079,
+          "break_flip_rate": 0.39136690647482014,
+          "self_patch_ok": true
+        },
+        "20": {
+          "repair_flip_rate": 0.04460431654676259,
+          "break_flip_rate": 0.8446043165467626,
+          "self_patch_ok": true
+        },
+        "30": {
+          "repair_flip_rate": 0.04892086330935252,
+          "break_flip_rate": 0.8388489208633093,
+          "self_patch_ok": true
+        }
+      }
+    },
+    "qwen25_3b_instruct": {
+      "model": "qwen25_3b_instruct",
+      "e2_sample_bucket_rates": {
+        "m2_capture": 0.7288888888888889,
+        "m1_silence": 0.07777777777777778,
+        "correct_attend": 0.04,
+        "residual": 0.15333333333333332,
+        "window_limited": 0.0
+      },
+      "e2_pairs_used": 450,
+      "e2_crosstab": {
+        "distractor_hit": {
+          "m2_capture": 325,
+          "m1_silence": 34,
+          "correct_attend": 16,
+          "residual": 68,
+          "window_limited": 0
+        },
+        "other_wrong": {
+          "m2_capture": 3,
+          "m1_silence": 1,
+          "correct_attend": 2,
+          "residual": 1,
+          "window_limited": 0
+        }
+      },
+      "e3": {
+        "1": {
+          "repair_flip_rate": 0.2311111111111111,
+          "break_flip_rate": 0.1688888888888889,
+          "self_patch_ok": true
+        },
+        "5": {
+          "repair_flip_rate": 0.30444444444444446,
+          "break_flip_rate": 0.3333333333333333,
+          "self_patch_ok": true
+        },
+        "10": {
+          "repair_flip_rate": 0.33111111111111113,
+          "break_flip_rate": 0.5311111111111111,
+          "self_patch_ok": true
+        },
+        "20": {
+          "repair_flip_rate": 0.12222222222222222,
+          "break_flip_rate": 0.6688888888888889,
+          "self_patch_ok": true
+        },
+        "30": {
+          "repair_flip_rate": 0.03777777777777778,
+          "break_flip_rate": 0.9288888888888889,
+          "self_patch_ok": true
+        }
+      }
+    }
+  },
+  "causal_decision": {
+    "1": {
+      "llama31_8b_instruct": {
+        "repair": {
+          "p": 1.0,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 1.0,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "gemma2_9b_it": {
+        "repair": {
+          "p": 0.627037296270373,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 1.0,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "mistral_7b_instruct": {
+        "repair": {
+          "p": 1.0,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 0.49925007499250074,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "qwen25_7b_instruct": {
+        "repair": {
+          "p": 0.0006999300069993001,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 1.0,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "olmo2_7b_instruct": {
+        "repair": {
+          "p": 0.0025997400259974,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 0.09249075092490751,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "phi35_mini": {
+        "repair": {
+          "p": 0.7258274172582742,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 0.49545045495450457,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "qwen25_3b_instruct": {
+        "repair": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        }
+      }
+    },
+    "5": {
+      "llama31_8b_instruct": {
+        "repair": {
+          "p": 0.028197180281971802,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "gemma2_9b_it": {
+        "repair": {
+          "p": 1.0,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 0.35976402359764026,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "mistral_7b_instruct": {
+        "repair": {
+          "p": 0.00019998000199980003,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "qwen25_7b_instruct": {
+        "repair": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        },
+        "break": {
+          "p": 0.014698530146985302,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "olmo2_7b_instruct": {
+        "repair": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "phi35_mini": {
+        "repair": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "qwen25_3b_instruct": {
+        "repair": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        }
+      }
+    },
+    "10": {
+      "llama31_8b_instruct": {
+        "repair": {
+          "p": 0.1316868313168683,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "gemma2_9b_it": {
+        "repair": {
+          "p": 0.08389161083891611,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 0.0096990300969903,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "mistral_7b_instruct": {
+        "repair": {
+          "p": 0.00019998000199980003,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "qwen25_7b_instruct": {
+        "repair": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 0.12488751124887511,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "olmo2_7b_instruct": {
+        "repair": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        }
+      },
+      "phi35_mini": {
+        "repair": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        }
+      },
+      "qwen25_3b_instruct": {
+        "repair": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        }
+      }
+    },
+    "20": {
+      "llama31_8b_instruct": {
+        "repair": {
+          "p": 0.20727927207279273,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "gemma2_9b_it": {
+        "repair": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "mistral_7b_instruct": {
+        "repair": {
+          "p": 0.00019998000199980003,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "qwen25_7b_instruct": {
+        "repair": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        },
+        "break": {
+          "p": 0.0115988401159884,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "olmo2_7b_instruct": {
+        "repair": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        }
+      },
+      "phi35_mini": {
+        "repair": {
+          "p": 0.0867913208679132,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        }
+      },
+      "qwen25_3b_instruct": {
+        "repair": {
+          "p": 0.0007999200079992001,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        }
+      }
+    },
+    "30": {
+      "llama31_8b_instruct": {
+        "repair": {
+          "p": 0.052594740525947405,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "gemma2_9b_it": {
+        "repair": {
+          "p": 0.0066993300669933005,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        }
+      },
+      "mistral_7b_instruct": {
+        "repair": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        }
+      },
+      "qwen25_7b_instruct": {
+        "repair": {
+          "p": 0.007599240075992401,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        }
+      },
+      "olmo2_7b_instruct": {
+        "repair": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        }
+      },
+      "phi35_mini": {
+        "repair": {
+          "p": 0.6983301669833016,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        }
+      },
+      "qwen25_3b_instruct": {
+        "repair": {
+          "p": 0.0064993500649935,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        }
+      }
+    },
+    "39": {
+      "llama31_8b_instruct": {
+        "repair": {
+          "p": 0.24277572242775722,
+          "bh_rejected": false,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        }
+      }
+    },
+    "77": {
+      "gemma2_9b_it": {
+        "repair": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": false,
+          "effect": false
+        },
+        "break": {
+          "p": 9.999000099990002e-05,
+          "bh_rejected": true,
+          "margin_met": true,
+          "effect": true
+        }
+      }
+    }
+  }
+}

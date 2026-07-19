@@ -1,0 +1,66 @@
+{
+  "provenance": {
+    "script": "scripts/e1_breaking_surface.py",
+    "code": {
+      "commit": "703c6b2b0b679745579753c23621f631f0d2a846",
+      "branch": "main",
+      "dirty": true,
+      "repo_root": "/content/rope-part3"
+    },
+    "config_hashes": {
+      "/content/rope-part3/configs/grid.yaml": "ed3feb37f4996d9917526ae5ee24260bf807940c6350db2a732f345a6b71a808",
+      "/content/rope-part3/configs/decoding.yaml": "99f6af4496e269442ee2aba0a8b16ec380329490cc91370ca85089aaff0b5ae2",
+      "/content/rope-part3/configs/paths.yaml": "e084e49efd9c939e6ba2d76ab9b7cd8f2e05746855f4a9488f3b43de0755e0c3",
+      "/content/rope-part3/configs/preregistration.yaml": "345db496c5721638422a62d5a9ad030e555ef12a1e22b73e61f020779f2c8d7b"
+    },
+    "model_key": "mistral_7b_instruct",
+    "model_sha": "c170c708c41dac9275d15a8fff4eca08d52bab71",
+    "seeds": [
+      42
+    ],
+    "timestamp_utc": "2026-07-09T15:48:41.116874+00:00",
+    "platform": "Linux-6.6.122+-x86_64-with-glibc2.35",
+    "packages": {
+      "python": "3.12.13",
+      "numpy": "2.0.2",
+      "scipy": "1.16.3",
+      "torch": "2.11.0+cu128",
+      "transformers": "4.47.0"
+    },
+    "extra": {
+      "effective_attn": "sdpa"
+    }
+  },
+  "breaking_cells": [
+    "00f71e5fcd1ef670",
+    "107352ec589bc962",
+    "204560f153372758",
+    "25ffa0b48fe8bd69",
+    "265c195b94d50bb8",
+    "36e7d0582d72dfb9",
+    "39b8c78fc44fc476",
+    "537c1bc673485b56",
+    "5959ed3b9d88999a",
+    "5e051bc11e944c04",
+    "5ed5026ff3650a02",
+    "75d8e1b103c343e2",
+    "7f9fbc26e4d0ebc8",
+    "83972a602eae9778",
+    "91e03f3fbbd8f79f",
+    "a249ed63d20fa692",
+    "a57c427e76850ba5",
+    "b1bff42b2edea542",
+    "b35b9d6c1d3b2738",
+    "b4d8534ca9d4cb3b",
+    "b775f999844feb11",
+    "bb060fcd19c7ddc5",
+    "c73ae53ca6076a68",
+    "d41ccf3b98b689f0",
+    "d779dcb75eb26784",
+    "de81d40ce7476cdc",
+    "ef1c588f1341f586",
+    "fcd0bb7db61f073e",
+    "fd5c3bbf2dd6392e"
+  ],
+  "fallback_applied": false
+}

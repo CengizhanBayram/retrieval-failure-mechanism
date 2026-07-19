@@ -1,0 +1,61 @@
+{
+  "provenance": {
+    "script": "scripts/e2_signatures.py",
+    "code": {
+      "commit": "2845f8a24271f025ff4c1a0bd7e03a39ac8bafd1",
+      "branch": "main",
+      "dirty": false,
+      "repo_root": "/content/rope-part3"
+    },
+    "config_hashes": {
+      "/content/rope-part3/configs/grid.yaml": "bbf4c98ba43eead886444d9d0973f5c5d1c7e70a38e0edb14119a40ae7db5374",
+      "/content/rope-part3/configs/decoding.yaml": "99f6af4496e269442ee2aba0a8b16ec380329490cc91370ca85089aaff0b5ae2",
+      "/content/rope-part3/configs/paths.yaml": "e084e49efd9c939e6ba2d76ab9b7cd8f2e05746855f4a9488f3b43de0755e0c3",
+      "/content/rope-part3/configs/preregistration.yaml": "345db496c5721638422a62d5a9ad030e555ef12a1e22b73e61f020779f2c8d7b"
+    },
+    "model_key": "qwen25_7b_instruct",
+    "model_sha": "a09a35458c702b33eeacc393d103063234e8bc28",
+    "seeds": [
+      43
+    ],
+    "timestamp_utc": "2026-07-07T11:20:37.590335+00:00",
+    "platform": "Linux-6.6.122+-x86_64-with-glibc2.35",
+    "packages": {
+      "python": "3.12.13",
+      "numpy": "2.0.2",
+      "scipy": "1.16.3",
+      "torch": "2.11.0+cu128",
+      "transformers": "4.47.0"
+    },
+    "extra": {
+      "detection_seed": 42,
+      "detection_artifact": "/content/rope-part2/datas/results/profile/qwen25_7b_instruct_seed42.json",
+      "k_heads": 5,
+      "answer_steps": 1,
+      "detector": "argmax",
+      "seed_override": 43,
+      "effective_attn": "sdpa"
+    }
+  },
+  "per_head": {},
+  "sample_level": {
+    "bucket_counts": {
+      "m2_capture": 0,
+      "m1_silence": 0,
+      "correct_attend": 0,
+      "residual": 0,
+      "window_limited": 0
+    },
+    "bucket_rates": {
+      "m2_capture": 0.0,
+      "m1_silence": 0.0,
+      "correct_attend": 0.0,
+      "residual": 0.0,
+      "window_limited": 0.0
+    }
+  },
+  "crosstab_behavior_x_mechanism": {},
+  "reference_stats": {},
+  "pairs_used": 0,
+  "cells_used": []
+}

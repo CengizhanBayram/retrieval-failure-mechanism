@@ -1,0 +1,112 @@
+{
+  "provenance": {
+    "script": "scripts/e5_robustness.py",
+    "code": {
+      "commit": "faf7ee02529c20cccd3c49385e4ba29b9cb1c12a",
+      "branch": "main",
+      "dirty": false,
+      "repo_root": "/content/rope-part3"
+    },
+    "config_hashes": {
+      "/content/rope-part3/configs/paths.yaml": "e084e49efd9c939e6ba2d76ab9b7cd8f2e05746855f4a9488f3b43de0755e0c3",
+      "/content/rope-part3/configs/preregistration.yaml": "345db496c5721638422a62d5a9ad030e555ef12a1e22b73e61f020779f2c8d7b"
+    },
+    "model_key": "llama31_8b_instruct",
+    "model_sha": null,
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "timestamp_utc": "2026-07-17T14:19:27.836461+00:00",
+    "platform": "Linux-6.6.122+-x86_64-with-glibc2.35",
+    "packages": {
+      "python": "3.12.13",
+      "numpy": "2.0.2",
+      "scipy": "1.16.3",
+      "torch": "2.11.0+cu128",
+      "transformers": "4.47.0"
+    },
+    "extra": {
+      "sensitivity_k_heads": 10,
+      "variants": [
+        "wu"
+      ]
+    }
+  },
+  "headline_variants": {
+    "wu": {
+      "m2_capture": 0.0,
+      "m1_silence": 1.0,
+      "correct_attend": 0.0,
+      "residual": 0.0,
+      "window_limited": 0.0
+    },
+    "ksens": {
+      "m2_capture": 0.21428571428571427,
+      "m1_silence": 0.5357142857142857,
+      "correct_attend": 0.0,
+      "residual": 0.25,
+      "window_limited": 0.0
+    },
+    "steps3": {
+      "m2_capture": 1.0,
+      "m1_silence": 0.0,
+      "correct_attend": 0.0,
+      "residual": 0.0,
+      "window_limited": 0.0
+    },
+    "m2sens": {}
+  },
+  "seed_repeats": {
+    "per_bucket": {
+      "correct_attend": {
+        "mean": 0.021910919540229886,
+        "min": 0.0,
+        "max": 0.034482758620689655,
+        "range": 0.034482758620689655
+      },
+      "m1_silence": {
+        "mean": 0.46084770114942525,
+        "min": 0.41379310344827586,
+        "max": 0.5,
+        "range": 0.08620689655172414
+      },
+      "m2_capture": {
+        "mean": 0.23629926108374386,
+        "min": 0.21428571428571427,
+        "max": 0.27586206896551724,
+        "range": 0.061576354679802964
+      },
+      "residual": {
+        "mean": 0.280942118226601,
+        "min": 0.27586206896551724,
+        "max": 0.2857142857142857,
+        "range": 0.009852216748768461
+      },
+      "window_limited": {
+        "mean": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "range": 0.0
+      }
+    },
+    "n_repeats": 3
+  },
+  "R_self": {
+    "bucket_rate_stability": 0.961576354679803,
+    "mean_bucket_range": 0.03842364532019704,
+    "definition": "1 - mean over buckets of (max-min sample-level rate) across seed repeats"
+  },
+  "primary": {
+    "m2_capture": 0.6176890156918687,
+    "m1_silence": 0.1783166904422254,
+    "correct_attend": 0.024251069900142655,
+    "residual": 0.1797432239657632,
+    "window_limited": 0.0
+  },
+  "m2_floor": {
+    "preregistered": 0.1,
+    "alternative": 0.15
+  }
+}

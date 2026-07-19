@@ -8,21 +8,16 @@ __pycache__/
 venv/
 
 paper
-# Results are large and machine-produced. Only manifests + breaking-cell lists
-# and the small analysis JSONs are meant to be committed; everything else is
-# regenerated. See §3 of the task spec ("results/ gitignored except manifests").
+
+# The repo's own scratch results/ dir (default output when RFM_RESULTS_DIR is unset)
 results/**
 !results/.gitkeep
 !results/**/manifest.json
 !results/**/*_manifest.json
 
-# Donor activation stores (large binary)
-*.npz
-
-# Result JSONs downloaded from Drive into the repo tree (e.g. notebooks/) must
-# never be committed — results are machine-produced and live outside git (§3).
-# These patterns match the artifact FILES, not the scripts (*.py) or notebooks
-# (*.ipynb) that share the experiment names.
+# --- Result artifacts -------------------------------------------------------
+# By default every result JSON is ignored ANYWHERE (so a download into e.g.
+# notebooks/ can never leak into git), together with the heavy/internal ones.
 e1_surface_*.json
 e1_breaking_cells_*.json
 e2_signatures_*.json
@@ -31,8 +26,16 @@ e4_families.json
 e5_robustness_*.json
 gate_eager_reference.json
 *.pre_pairfix
+*.npz
+
+# EXCEPT the curated published snapshot in rfm_results/ (the paper's result JSONs)…
+!rfm_results/**
+
+# …minus its heavy or internal parts, which stay out even inside rfm_results/.
+rfm_results/checkpoints/
+rfm_results/**/*.pre_pairfix
+rfm_results/**/*.npz
 
 # OS
 .DS_Store
 Thumbs.db
-rfm_results

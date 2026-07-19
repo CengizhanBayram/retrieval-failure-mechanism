@@ -1,0 +1,212 @@
+{
+  "provenance": {
+    "script": "scripts/e2_signatures.py",
+    "code": {
+      "commit": "2845f8a24271f025ff4c1a0bd7e03a39ac8bafd1",
+      "branch": "main",
+      "dirty": false,
+      "repo_root": "/content/rope-part3"
+    },
+    "config_hashes": {
+      "/content/rope-part3/configs/grid.yaml": "bbf4c98ba43eead886444d9d0973f5c5d1c7e70a38e0edb14119a40ae7db5374",
+      "/content/rope-part3/configs/decoding.yaml": "99f6af4496e269442ee2aba0a8b16ec380329490cc91370ca85089aaff0b5ae2",
+      "/content/rope-part3/configs/paths.yaml": "e084e49efd9c939e6ba2d76ab9b7cd8f2e05746855f4a9488f3b43de0755e0c3",
+      "/content/rope-part3/configs/preregistration.yaml": "345db496c5721638422a62d5a9ad030e555ef12a1e22b73e61f020779f2c8d7b"
+    },
+    "model_key": "qwen25_3b_instruct",
+    "model_sha": "aa8e72537993ba99e69dfaafa59ed015b17504d1",
+    "seeds": [
+      44
+    ],
+    "timestamp_utc": "2026-07-07T11:40:03.506186+00:00",
+    "platform": "Linux-6.6.122+-x86_64-with-glibc2.35",
+    "packages": {
+      "python": "3.12.13",
+      "numpy": "2.0.2",
+      "scipy": "1.16.3",
+      "torch": "2.11.0+cu128",
+      "transformers": "4.47.0"
+    },
+    "extra": {
+      "detection_seed": 42,
+      "detection_artifact": "/content/rope-part2/datas/results/profile/qwen25_3b_instruct_seed42.json",
+      "k_heads": 5,
+      "answer_steps": 1,
+      "detector": "argmax",
+      "seed_override": 44,
+      "effective_attn": "sdpa"
+    }
+  },
+  "per_head": {
+    "L27_H1": {
+      "n_pairs": 23,
+      "success_needle_mean": 0.18779785348021466,
+      "failure_needle_mean": 0.0969535860678424,
+      "paired_perm_p": 0.0022997700229977,
+      "cliffs_delta_success_vs_failure": 0.4820415879017013,
+      "mean_diff_ci": {
+        "lo": 0.03597173753963869,
+        "hi": 0.15724560568190138,
+        "level": 0.95
+      },
+      "bucket_counts": {
+        "m2_capture": 23,
+        "m1_silence": 0,
+        "correct_attend": 0,
+        "residual": 0,
+        "window_limited": 0
+      },
+      "bh_rejected": true,
+      "bh_qvalue": 0.0057494250574942505
+    },
+    "L31_H7": {
+      "n_pairs": 23,
+      "success_needle_mean": 0.41997163516023883,
+      "failure_needle_mean": 0.3183848896752233,
+      "paired_perm_p": 0.0110988901109889,
+      "cliffs_delta_success_vs_failure": 0.3837429111531191,
+      "mean_diff_ci": {
+        "lo": 0.035376808921928,
+        "hi": 0.17210615502427454,
+        "level": 0.95
+      },
+      "bucket_counts": {
+        "m2_capture": 6,
+        "m1_silence": 0,
+        "correct_attend": 7,
+        "residual": 10,
+        "window_limited": 0
+      },
+      "bh_rejected": true,
+      "bh_qvalue": 0.013873612638736125
+    },
+    "L31_H12": {
+      "n_pairs": 23,
+      "success_needle_mean": 0.4850310388466586,
+      "failure_needle_mean": 0.2615356912593479,
+      "paired_perm_p": 0.00029997000299970003,
+      "cliffs_delta_success_vs_failure": 0.6143667296786389,
+      "mean_diff_ci": {
+        "lo": 0.12917800381698688,
+        "hi": 0.3086198788541166,
+        "level": 0.95
+      },
+      "bucket_counts": {
+        "m2_capture": 18,
+        "m1_silence": 0,
+        "correct_attend": 4,
+        "residual": 1,
+        "window_limited": 0
+      },
+      "bh_rejected": true,
+      "bh_qvalue": 0.0014998500149985001
+    },
+    "L29_H3": {
+      "n_pairs": 23,
+      "success_needle_mean": 0.3024432289859523,
+      "failure_needle_mean": 0.2401081893755042,
+      "paired_perm_p": 0.0044995500449955,
+      "cliffs_delta_success_vs_failure": 0.4933837429111531,
+      "mean_diff_ci": {
+        "lo": 0.023206387962336126,
+        "hi": 0.10207559471221073,
+        "level": 0.95
+      },
+      "bucket_counts": {
+        "m2_capture": 16,
+        "m1_silence": 1,
+        "correct_attend": 5,
+        "residual": 1,
+        "window_limited": 0
+      },
+      "bh_rejected": true,
+      "bh_qvalue": 0.0074992500749925
+    },
+    "L30_H11": {
+      "n_pairs": 23,
+      "success_needle_mean": 0.20783168579573216,
+      "failure_needle_mean": 0.1479860873002073,
+      "paired_perm_p": 0.1615838416158384,
+      "cliffs_delta_success_vs_failure": 0.33459357277882795,
+      "mean_diff_ci": {
+        "lo": -0.017894432296895458,
+        "hi": 0.13689851073305243,
+        "level": 0.95
+      },
+      "bucket_counts": {
+        "m2_capture": 19,
+        "m1_silence": 0,
+        "correct_attend": 4,
+        "residual": 0,
+        "window_limited": 0
+      },
+      "bh_rejected": false,
+      "bh_qvalue": 0.1615838416158384
+    }
+  },
+  "sample_level": {
+    "bucket_counts": {
+      "m2_capture": 22,
+      "m1_silence": 0,
+      "correct_attend": 1,
+      "residual": 0,
+      "window_limited": 0
+    },
+    "bucket_rates": {
+      "m2_capture": 0.9565217391304348,
+      "m1_silence": 0.0,
+      "correct_attend": 0.043478260869565216,
+      "residual": 0.0,
+      "window_limited": 0.0
+    }
+  },
+  "crosstab_behavior_x_mechanism": {
+    "distractor_hit": {
+      "m2_capture": 19,
+      "m1_silence": 0,
+      "correct_attend": 1,
+      "residual": 0,
+      "window_limited": 0
+    },
+    "other_wrong": {
+      "m2_capture": 3,
+      "m1_silence": 0,
+      "correct_attend": 0,
+      "residual": 0,
+      "window_limited": 0
+    }
+  },
+  "reference_stats": {
+    "f563d51b2c266aa4": {
+      "L27_H1": {
+        "p5": 0.042580469697713855,
+        "median": 0.15861935913562775,
+        "n_success": 77
+      },
+      "L31_H7": {
+        "p5": 0.19435970783233641,
+        "median": 0.380373477935791,
+        "n_success": 77
+      },
+      "L31_H12": {
+        "p5": 0.15388598442077636,
+        "median": 0.4562332034111023,
+        "n_success": 77
+      },
+      "L29_H3": {
+        "p5": 0.17469327449798583,
+        "median": 0.2790016233921051,
+        "n_success": 77
+      },
+      "L30_H11": {
+        "p5": 0.060685737431049346,
+        "median": 0.15655608475208282,
+        "n_success": 77
+      }
+    }
+  },
+  "pairs_used": 23,
+  "cells_used": [
+    "f563d51b2c266aa4"
+  ]
+}

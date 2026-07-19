@@ -1,0 +1,5036 @@
+{
+  "provenance": {
+    "script": "scripts/e1_breaking_surface.py",
+    "code": {
+      "commit": "703c6b2b0b679745579753c23621f631f0d2a846",
+      "branch": "main",
+      "dirty": true,
+      "repo_root": "/content/rope-part3"
+    },
+    "config_hashes": {
+      "/content/rope-part3/configs/grid.yaml": "ed3feb37f4996d9917526ae5ee24260bf807940c6350db2a732f345a6b71a808",
+      "/content/rope-part3/configs/decoding.yaml": "99f6af4496e269442ee2aba0a8b16ec380329490cc91370ca85089aaff0b5ae2",
+      "/content/rope-part3/configs/paths.yaml": "e084e49efd9c939e6ba2d76ab9b7cd8f2e05746855f4a9488f3b43de0755e0c3",
+      "/content/rope-part3/configs/preregistration.yaml": "345db496c5721638422a62d5a9ad030e555ef12a1e22b73e61f020779f2c8d7b"
+    },
+    "model_key": "olmo2_7b_instruct",
+    "model_sha": "470b1fba1ae01581f270116362ee4aa1b97f4c84",
+    "seeds": [
+      42
+    ],
+    "timestamp_utc": "2026-07-09T17:54:28.745254+00:00",
+    "platform": "Linux-6.6.122+-x86_64-with-glibc2.35",
+    "packages": {
+      "python": "3.12.13",
+      "numpy": "2.0.2",
+      "scipy": "1.16.3",
+      "torch": "2.11.0+cu128",
+      "transformers": "4.47.0"
+    },
+    "extra": {
+      "effective_attn": "sdpa"
+    }
+  },
+  "cells": {
+    "d567e2b3fbe67c3b": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.1,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "d567e2b3fbe67c3b",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "ee3430064584494c": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.1,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "ee3430064584494c",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "1bda578e52d57e6a": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.1,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "1bda578e52d57e6a",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "b3169f7215a771d0": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.1,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "b3169f7215a771d0",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "17a0b19e43cedcf6": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.1,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "17a0b19e43cedcf6",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "8e194c2166507e1b": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.1,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "8e194c2166507e1b",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.9583333333333334,
+      "wilson_ci95": {
+        "lo": 0.7975819352134406,
+        "hi": 0.9926065438344942
+      },
+      "behavioral_grade_counts": {
+        "correct": 23,
+        "distractor_hit": 0,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "d6fe43c84b6a215c": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.1,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "d6fe43c84b6a215c",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.9583333333333334,
+      "wilson_ci95": {
+        "lo": 0.7975819352134406,
+        "hi": 0.9926065438344942
+      },
+      "behavioral_grade_counts": {
+        "correct": 23,
+        "distractor_hit": 1,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "14a34156ce4cd9df": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.1,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "14a34156ce4cd9df",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "cb90ac52960e54b8": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.1,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "cb90ac52960e54b8",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "114241606799f88f": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.1,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "114241606799f88f",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "189881865acbf58b": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.3,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "189881865acbf58b",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "b923e21125262bfd": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.3,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "b923e21125262bfd",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "ac0f203559736bb8": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.3,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "ac0f203559736bb8",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "5bfba8a41c94331a": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.3,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "5bfba8a41c94331a",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "fa0f7d1c41c2d64b": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.3,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "fa0f7d1c41c2d64b",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "933bbf1d1bc91167": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.3,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "933bbf1d1bc91167",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.53,
+      "wilson_ci95": {
+        "lo": 0.4328885697009936,
+        "hi": 0.6248918204065872
+      },
+      "behavioral_grade_counts": {
+        "correct": 53,
+        "distractor_hit": 47,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "b9145cbad12a2138": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.3,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "b9145cbad12a2138",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.9166666666666666,
+      "wilson_ci95": {
+        "lo": 0.7415119780678932,
+        "hi": 0.9768411847029566
+      },
+      "behavioral_grade_counts": {
+        "correct": 22,
+        "distractor_hit": 1,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "ed71185e56d4989e": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.3,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "ed71185e56d4989e",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "842c65b3a73c317e": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.3,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "842c65b3a73c317e",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.68,
+      "wilson_ci95": {
+        "lo": 0.5833738138954763,
+        "hi": 0.763308526750009
+      },
+      "behavioral_grade_counts": {
+        "correct": 68,
+        "distractor_hit": 32,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "56c058f5065907ae": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.3,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "56c058f5065907ae",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.62,
+      "wilson_ci95": {
+        "lo": 0.5220975529551108,
+        "hi": 0.7090240074752125
+      },
+      "behavioral_grade_counts": {
+        "correct": 62,
+        "distractor_hit": 36,
+        "other_wrong": 2,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "21ddc0e80fae21ae": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.5,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "21ddc0e80fae21ae",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "f7a2b9fa1f5a76ad": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.5,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "f7a2b9fa1f5a76ad",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "7baa9469c806dc31": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.5,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "7baa9469c806dc31",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.67,
+      "wilson_ci95": {
+        "lo": 0.5730534379509054,
+        "hi": 0.7543687726587196
+      },
+      "behavioral_grade_counts": {
+        "correct": 67,
+        "distractor_hit": 32,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "39ff45fe56bb22db": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.5,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "39ff45fe56bb22db",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.63,
+      "wilson_ci95": {
+        "lo": 0.5322052958094291,
+        "hi": 0.7181763946567546
+      },
+      "behavioral_grade_counts": {
+        "correct": 63,
+        "distractor_hit": 37,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "2580b75e7284fae4": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.5,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "2580b75e7284fae4",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "a61f6460d63e030e": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.5,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "a61f6460d63e030e",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.84,
+      "wilson_ci95": {
+        "lo": 0.7557973061072976,
+        "hi": 0.8990471151119521
+      },
+      "behavioral_grade_counts": {
+        "correct": 84,
+        "distractor_hit": 16,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "dfe2e4a91e17c731": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.5,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "dfe2e4a91e17c731",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.16666666666666666,
+      "wilson_ci95": {
+        "lo": 0.06678676328632951,
+        "hi": 0.3585307064969906
+      },
+      "behavioral_grade_counts": {
+        "correct": 4,
+        "distractor_hit": 20,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "3379009adceffc34": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.5,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "3379009adceffc34",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "5d5d97d7ddee2648": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.5,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "5d5d97d7ddee2648",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.875,
+      "wilson_ci95": {
+        "lo": 0.6899611872949993,
+        "hi": 0.9565566591987655
+      },
+      "behavioral_grade_counts": {
+        "correct": 21,
+        "distractor_hit": 3,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "8c93ba7d7255a2de": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.5,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "8c93ba7d7255a2de",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.38,
+      "wilson_ci95": {
+        "lo": 0.29097599252478734,
+        "hi": 0.47790244704488916
+      },
+      "behavioral_grade_counts": {
+        "correct": 38,
+        "distractor_hit": 61,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "4cc9ccd638f89b70": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.7,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "4cc9ccd638f89b70",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "abcb576c41cc722d": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.7,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "abcb576c41cc722d",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "57ad22b5a5bb6113": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.7,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "57ad22b5a5bb6113",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.9166666666666666,
+      "wilson_ci95": {
+        "lo": 0.7415119780678932,
+        "hi": 0.9768411847029566
+      },
+      "behavioral_grade_counts": {
+        "correct": 22,
+        "distractor_hit": 2,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "0d66eb8137041fba": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.7,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "0d66eb8137041fba",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.8,
+      "wilson_ci95": {
+        "lo": 0.7111708344068411,
+        "hi": 0.8666330666689676
+      },
+      "behavioral_grade_counts": {
+        "correct": 80,
+        "distractor_hit": 19,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "7d717ebca90a7d53": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.7,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "7d717ebca90a7d53",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "cba61821d26f6e29": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.7,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "cba61821d26f6e29",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "3e4d6476f4d9a3de": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.7,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "3e4d6476f4d9a3de",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.86,
+      "wilson_ci95": {
+        "lo": 0.7786281178903616,
+        "hi": 0.9147365634006086
+      },
+      "behavioral_grade_counts": {
+        "correct": 86,
+        "distractor_hit": 11,
+        "other_wrong": 3,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "6ebf0f67240e4678": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.7,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "6ebf0f67240e4678",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.9583333333333334,
+      "wilson_ci95": {
+        "lo": 0.7975819352134406,
+        "hi": 0.9926065438344942
+      },
+      "behavioral_grade_counts": {
+        "correct": 23,
+        "distractor_hit": 1,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "1f0b4176bcef46f6": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.7,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "1f0b4176bcef46f6",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.9583333333333334,
+      "wilson_ci95": {
+        "lo": 0.7975819352134406,
+        "hi": 0.9926065438344942
+      },
+      "behavioral_grade_counts": {
+        "correct": 23,
+        "distractor_hit": 1,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "613bb26c28f7f3f7": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.7,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "613bb26c28f7f3f7",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.9583333333333334,
+      "wilson_ci95": {
+        "lo": 0.7975819352134406,
+        "hi": 0.9926065438344942
+      },
+      "behavioral_grade_counts": {
+        "correct": 23,
+        "distractor_hit": 1,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "e48fe362ad2bb822": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.9,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "e48fe362ad2bb822",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "cef685930a44c07e": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.9,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "cef685930a44c07e",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "1bc69099dfbe852a": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.9,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "1bc69099dfbe852a",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.875,
+      "wilson_ci95": {
+        "lo": 0.6899611872949993,
+        "hi": 0.9565566591987655
+      },
+      "behavioral_grade_counts": {
+        "correct": 21,
+        "distractor_hit": 3,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "8541f9daf1c13e51": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.9,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "8541f9daf1c13e51",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.81,
+      "wilson_ci95": {
+        "lo": 0.7222115462093562,
+        "hi": 0.8748524849023126
+      },
+      "behavioral_grade_counts": {
+        "correct": 81,
+        "distractor_hit": 19,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "bc1f426610787e28": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.9,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "bc1f426610787e28",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "2e47d5028bd311b9": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.9,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "2e47d5028bd311b9",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "3abbbb42aea23136": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.9,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "3abbbb42aea23136",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.9166666666666666,
+      "wilson_ci95": {
+        "lo": 0.7415119780678932,
+        "hi": 0.9768411847029566
+      },
+      "behavioral_grade_counts": {
+        "correct": 22,
+        "distractor_hit": 2,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "719234deac33816c": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.9,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "719234deac33816c",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.9583333333333334,
+      "wilson_ci95": {
+        "lo": 0.7975819352134406,
+        "hi": 0.9926065438344942
+      },
+      "behavioral_grade_counts": {
+        "correct": 23,
+        "distractor_hit": 0,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "6b6d970fe49b8cd4": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.9,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "6b6d970fe49b8cd4",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "397f0aa02c321891": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 2048,
+        "needle_position": 0.9,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "397f0aa02c321891",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.875,
+      "wilson_ci95": {
+        "lo": 0.6899611872949993,
+        "hi": 0.9565566591987655
+      },
+      "behavioral_grade_counts": {
+        "correct": 21,
+        "distractor_hit": 3,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 2048
+    },
+    "d42a6aede515f4bd": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.1,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "d42a6aede515f4bd",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "75211738859a6415": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.1,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "75211738859a6415",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "72f20dd2c1724932": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.1,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "72f20dd2c1724932",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.9583333333333334,
+      "wilson_ci95": {
+        "lo": 0.7975819352134406,
+        "hi": 0.9926065438344942
+      },
+      "behavioral_grade_counts": {
+        "correct": 23,
+        "distractor_hit": 0,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "dfed1e69bc00816f": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.1,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "dfed1e69bc00816f",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "3a05fca50358602b": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.1,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "3a05fca50358602b",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "caf0e46bbc05ce38": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.1,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "caf0e46bbc05ce38",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "3f5892adec28b1ce": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.1,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "3f5892adec28b1ce",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.9166666666666666,
+      "wilson_ci95": {
+        "lo": 0.7415119780678932,
+        "hi": 0.9768411847029566
+      },
+      "behavioral_grade_counts": {
+        "correct": 22,
+        "distractor_hit": 2,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "0092448f21b70fc7": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.1,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "0092448f21b70fc7",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.9583333333333334,
+      "wilson_ci95": {
+        "lo": 0.7975819352134406,
+        "hi": 0.9926065438344942
+      },
+      "behavioral_grade_counts": {
+        "correct": 23,
+        "distractor_hit": 0,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "1a7ee7a72e15381b": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.1,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "1a7ee7a72e15381b",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.58,
+      "wilson_ci95": {
+        "lo": 0.4820648670304296,
+        "hi": 0.6720161732564526
+      },
+      "behavioral_grade_counts": {
+        "correct": 58,
+        "distractor_hit": 42,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "e9c6fa872e6c79fe": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.1,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "e9c6fa872e6c79fe",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.66,
+      "wilson_ci95": {
+        "lo": 0.5627772885472463,
+        "hi": 0.7453847920265183
+      },
+      "behavioral_grade_counts": {
+        "correct": 66,
+        "distractor_hit": 29,
+        "other_wrong": 5,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "b5cc3bb43562a24f": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.3,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "b5cc3bb43562a24f",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "a6ff3378dbae4d77": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.3,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "a6ff3378dbae4d77",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "be50acb3d355c377": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.3,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "be50acb3d355c377",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "a4977c21fb3bc0a3": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.3,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "a4977c21fb3bc0a3",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "21a4e67c5392b937": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.3,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "21a4e67c5392b937",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.77,
+      "wilson_ci95": {
+        "lo": 0.6784561697712622,
+        "hi": 0.8415673411969654
+      },
+      "behavioral_grade_counts": {
+        "correct": 77,
+        "distractor_hit": 20,
+        "other_wrong": 3,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "3e85be574fa4820b": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.3,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "3e85be574fa4820b",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.16666666666666666,
+      "wilson_ci95": {
+        "lo": 0.06678676328632951,
+        "hi": 0.3585307064969906
+      },
+      "behavioral_grade_counts": {
+        "correct": 4,
+        "distractor_hit": 20,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "f1c71f0c1023f9a4": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.3,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "f1c71f0c1023f9a4",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.16,
+      "wilson_ci95": {
+        "lo": 0.10095288488804782,
+        "hi": 0.24420269389270244
+      },
+      "behavioral_grade_counts": {
+        "correct": 16,
+        "distractor_hit": 83,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "d21a655a1f864cd9": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.3,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "d21a655a1f864cd9",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.68,
+      "wilson_ci95": {
+        "lo": 0.5833738138954763,
+        "hi": 0.763308526750009
+      },
+      "behavioral_grade_counts": {
+        "correct": 68,
+        "distractor_hit": 31,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "f764263e04eb8ea0": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.3,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "f764263e04eb8ea0",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.21,
+      "wilson_ci95": {
+        "lo": 0.14165654061915303,
+        "hi": 0.29979968834089865
+      },
+      "behavioral_grade_counts": {
+        "correct": 21,
+        "distractor_hit": 77,
+        "other_wrong": 2,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "b2630b7385e26a90": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.3,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "b2630b7385e26a90",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.27,
+      "wilson_ci95": {
+        "lo": 0.1926958414957634,
+        "hi": 0.36432116767944994
+      },
+      "behavioral_grade_counts": {
+        "correct": 27,
+        "distractor_hit": 72,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "9845789494481e71": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.5,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "9845789494481e71",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "7a2acc9157696838": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.5,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "7a2acc9157696838",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.43,
+      "wilson_ci95": {
+        "lo": 0.33733298524110106,
+        "hi": 0.5278461045078768
+      },
+      "behavioral_grade_counts": {
+        "correct": 43,
+        "distractor_hit": 52,
+        "other_wrong": 5,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "aa727add55efaaea": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.5,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "aa727add55efaaea",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.38,
+      "wilson_ci95": {
+        "lo": 0.29097599252478734,
+        "hi": 0.47790244704488916
+      },
+      "behavioral_grade_counts": {
+        "correct": 38,
+        "distractor_hit": 61,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "7397c82837616b71": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.5,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "7397c82837616b71",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.16,
+      "wilson_ci95": {
+        "lo": 0.10095288488804782,
+        "hi": 0.24420269389270244
+      },
+      "behavioral_grade_counts": {
+        "correct": 16,
+        "distractor_hit": 83,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "2454f9f5775f0929": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.5,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "2454f9f5775f0929",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.47,
+      "wilson_ci95": {
+        "lo": 0.3751081795934127,
+        "hi": 0.5671114302990063
+      },
+      "behavioral_grade_counts": {
+        "correct": 47,
+        "distractor_hit": 53,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "4a65d497701ca562": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.5,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "4a65d497701ca562",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.51,
+      "wilson_ci95": {
+        "lo": 0.4134801193402717,
+        "hi": 0.6057800106955886
+      },
+      "behavioral_grade_counts": {
+        "correct": 51,
+        "distractor_hit": 46,
+        "other_wrong": 3,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "4923cccec2f15aac": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.5,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "4923cccec2f15aac",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.08333333333333333,
+      "wilson_ci95": {
+        "lo": 0.023158815297043334,
+        "hi": 0.2584880219321068
+      },
+      "behavioral_grade_counts": {
+        "correct": 2,
+        "distractor_hit": 22,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "a239eee6c37023cb": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.5,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "a239eee6c37023cb",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.51,
+      "wilson_ci95": {
+        "lo": 0.4134801193402717,
+        "hi": 0.6057800106955886
+      },
+      "behavioral_grade_counts": {
+        "correct": 51,
+        "distractor_hit": 45,
+        "other_wrong": 4,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "3031f5053673843b": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.5,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "3031f5053673843b",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.16666666666666666,
+      "wilson_ci95": {
+        "lo": 0.06678676328632951,
+        "hi": 0.3585307064969906
+      },
+      "behavioral_grade_counts": {
+        "correct": 4,
+        "distractor_hit": 20,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "348f3897fe97c5f9": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.5,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "348f3897fe97c5f9",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 24,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "bcd75c4bdc4dd30e": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.7,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "bcd75c4bdc4dd30e",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "221b3863c9c99382": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.7,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "221b3863c9c99382",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.74,
+      "wilson_ci95": {
+        "lo": 0.6462901055081282,
+        "hi": 0.8159530153525186
+      },
+      "behavioral_grade_counts": {
+        "correct": 74,
+        "distractor_hit": 25,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "1b2810fa2fbd0353": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.7,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "1b2810fa2fbd0353",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.74,
+      "wilson_ci95": {
+        "lo": 0.6462901055081282,
+        "hi": 0.8159530153525186
+      },
+      "behavioral_grade_counts": {
+        "correct": 74,
+        "distractor_hit": 25,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "84c276a14bb6bb86": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.7,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "84c276a14bb6bb86",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.39,
+      "wilson_ci95": {
+        "lo": 0.3001687400639441,
+        "hi": 0.4879698295415926
+      },
+      "behavioral_grade_counts": {
+        "correct": 39,
+        "distractor_hit": 61,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "f193a813dffa0a51": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.7,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "f193a813dffa0a51",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.8333333333333334,
+      "wilson_ci95": {
+        "lo": 0.6414692935030095,
+        "hi": 0.9332132367136705
+      },
+      "behavioral_grade_counts": {
+        "correct": 20,
+        "distractor_hit": 2,
+        "other_wrong": 2,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "3ed1752218530b81": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.7,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "3ed1752218530b81",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.9166666666666666,
+      "wilson_ci95": {
+        "lo": 0.7415119780678932,
+        "hi": 0.9768411847029566
+      },
+      "behavioral_grade_counts": {
+        "correct": 22,
+        "distractor_hit": 2,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "c4fd48fcf904da02": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.7,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "c4fd48fcf904da02",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.15,
+      "wilson_ci95": {
+        "lo": 0.09305985283656633,
+        "hi": 0.23283559590832364
+      },
+      "behavioral_grade_counts": {
+        "correct": 15,
+        "distractor_hit": 83,
+        "other_wrong": 2,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "b6dc1cdf5c0acc4f": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.7,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "b6dc1cdf5c0acc4f",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.9583333333333334,
+      "wilson_ci95": {
+        "lo": 0.7975819352134406,
+        "hi": 0.9926065438344942
+      },
+      "behavioral_grade_counts": {
+        "correct": 23,
+        "distractor_hit": 1,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "12dd6af862273c93": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.7,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "12dd6af862273c93",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.6,
+      "wilson_ci95": {
+        "lo": 0.5020025867910618,
+        "hi": 0.6905987135675411
+      },
+      "behavioral_grade_counts": {
+        "correct": 60,
+        "distractor_hit": 38,
+        "other_wrong": 2,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "301b23f88058ca73": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.7,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "301b23f88058ca73",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.08333333333333333,
+      "wilson_ci95": {
+        "lo": 0.023158815297043334,
+        "hi": 0.2584880219321068
+      },
+      "behavioral_grade_counts": {
+        "correct": 2,
+        "distractor_hit": 22,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "e025e461273b5391": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.9,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "e025e461273b5391",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "cc5cc76391367c9a": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.9,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "cc5cc76391367c9a",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "0ae259d548c4c4a0": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.9,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "0ae259d548c4c4a0",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "73c92fd0805deb31": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.9,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "73c92fd0805deb31",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.875,
+      "wilson_ci95": {
+        "lo": 0.6899611872949993,
+        "hi": 0.9565566591987655
+      },
+      "behavioral_grade_counts": {
+        "correct": 21,
+        "distractor_hit": 2,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "bfdf6f1058e4635e": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.9,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "bfdf6f1058e4635e",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 1.0,
+      "wilson_ci95": {
+        "lo": 0.8620237953250198,
+        "hi": 1.0
+      },
+      "behavioral_grade_counts": {
+        "correct": 24,
+        "distractor_hit": 0,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "71078fa69b21caac": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.9,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "71078fa69b21caac",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.9583333333333334,
+      "wilson_ci95": {
+        "lo": 0.7975819352134406,
+        "hi": 0.9926065438344942
+      },
+      "behavioral_grade_counts": {
+        "correct": 23,
+        "distractor_hit": 0,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "017fcdb8683141ef": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.9,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "017fcdb8683141ef",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.72,
+      "wilson_ci95": {
+        "lo": 0.6251197129007884,
+        "hi": 0.7986031478881379
+      },
+      "behavioral_grade_counts": {
+        "correct": 72,
+        "distractor_hit": 26,
+        "other_wrong": 2,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "c32f056df4bcf306": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.9,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "c32f056df4bcf306",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.9166666666666666,
+      "wilson_ci95": {
+        "lo": 0.7415119780678932,
+        "hi": 0.9768411847029566
+      },
+      "behavioral_grade_counts": {
+        "correct": 22,
+        "distractor_hit": 1,
+        "other_wrong": 1,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "e12a7b42f9c69cf7": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.9,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "e12a7b42f9c69cf7",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.9583333333333334,
+      "wilson_ci95": {
+        "lo": 0.7975819352134406,
+        "hi": 0.9926065438344942
+      },
+      "behavioral_grade_counts": {
+        "correct": 23,
+        "distractor_hit": 1,
+        "other_wrong": 0,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "e8df9e4d41f06df3": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 4096,
+        "needle_position": 0.9,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "e8df9e4d41f06df3",
+      "n_stage1": 24,
+      "n_total": 100,
+      "accuracy": 0.66,
+      "wilson_ci95": {
+        "lo": 0.5627772885472463,
+        "hi": 0.7453847920265183
+      },
+      "behavioral_grade_counts": {
+        "correct": 66,
+        "distractor_hit": 31,
+        "other_wrong": 3,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 4096
+    },
+    "e2e0a7f48d020a92": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.1,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "e2e0a7f48d020a92",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "0c031bdcb363c524": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.1,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "0c031bdcb363c524",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "30809d7085358ddc": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.1,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "30809d7085358ddc",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "eefe74774490e9fc": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.1,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "eefe74774490e9fc",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "11c017c54f5adaec": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.1,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "11c017c54f5adaec",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "dc0c15c18f4b871e": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.1,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "dc0c15c18f4b871e",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "20824d6ffaaeab94": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.1,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "20824d6ffaaeab94",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "8fd8e19127e28246": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.1,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "8fd8e19127e28246",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "68e0965f0309749e": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.1,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "68e0965f0309749e",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "aceb7d463c8c7856": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.1,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "aceb7d463c8c7856",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "01829f35ecfd323e": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.3,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "01829f35ecfd323e",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "d3554c67b5913776": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.3,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "d3554c67b5913776",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "60066ca7f10a79cf": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.3,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "60066ca7f10a79cf",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "1446baa9963eacc2": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.3,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "1446baa9963eacc2",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "3d2daf14b8745dfe": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.3,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "3d2daf14b8745dfe",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "d2d0afc17a4d42f2": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.3,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "d2d0afc17a4d42f2",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "3f02f7a108686217": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.3,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "3f02f7a108686217",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "56fb0705f689f6cc": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.3,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "56fb0705f689f6cc",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "8179737fbb31c8cf": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.3,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "8179737fbb31c8cf",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "8efd99f0bae14674": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.3,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "8efd99f0bae14674",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "3a630ddd27a59cad": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.5,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "3a630ddd27a59cad",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "7c1e4ec7da77afe4": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.5,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "7c1e4ec7da77afe4",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "443381bc367e9491": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.5,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "443381bc367e9491",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "a13d7f974ab3365b": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.5,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "a13d7f974ab3365b",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "4a1d6c0e555a2b6e": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.5,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "4a1d6c0e555a2b6e",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "39c45095b946d409": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.5,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "39c45095b946d409",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "9e53d99dd7d22c25": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.5,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "9e53d99dd7d22c25",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "40196fe5b80c431a": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.5,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "40196fe5b80c431a",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "58aa4a54eefa11f0": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.5,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "58aa4a54eefa11f0",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "e30826f4617afb82": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.5,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "e30826f4617afb82",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "285d3e8baccdb7bd": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.7,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "285d3e8baccdb7bd",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "0890a6b424425966": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.7,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "0890a6b424425966",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "bc772ee463d4f34a": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.7,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "bc772ee463d4f34a",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "ecd070c339ebf76c": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.7,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "ecd070c339ebf76c",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "66979703dae9bdf3": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.7,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "66979703dae9bdf3",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "ffa0bb51f2765160": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.7,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "ffa0bb51f2765160",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "3674c99814c19c84": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.7,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "3674c99814c19c84",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "99aa12bdb9a03a06": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.7,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "99aa12bdb9a03a06",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "ffe14a61fce6f209": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.7,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "ffe14a61fce6f209",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "59e8547fd86f8c18": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.7,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "59e8547fd86f8c18",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "e1ee9a0a16f0edba": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.9,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "e1ee9a0a16f0edba",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "a42738b38cc2db57": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.9,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "a42738b38cc2db57",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "31e798bea5d18293": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.9,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "31e798bea5d18293",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "616544f7150749c5": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.9,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "616544f7150749c5",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "28ced6e41e779a4d": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.9,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "28ced6e41e779a4d",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "29dd66405da2c5af": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.9,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "29dd66405da2c5af",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "5bd15faa7f0cb040": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.9,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "5bd15faa7f0cb040",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "c359329c154fb198": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.9,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "c359329c154fb198",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "26fec8e761e9f1fc": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.9,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "26fec8e761e9f1fc",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "6f3811bb149f3310": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 8192,
+        "needle_position": 0.9,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "6f3811bb149f3310",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 8192
+    },
+    "4425fa8a2bcad60b": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.1,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "4425fa8a2bcad60b",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "bf2759fdf4817693": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.1,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "bf2759fdf4817693",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "567ff31c3f769d30": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.1,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "567ff31c3f769d30",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "9b83e4acfd2720dc": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.1,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "9b83e4acfd2720dc",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "cdfbbad8d53e7797": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.1,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "cdfbbad8d53e7797",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "52cbc181b580f156": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.1,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "52cbc181b580f156",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "8f3f75c8b75cdaa3": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.1,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "8f3f75c8b75cdaa3",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "e890dada1e337b0f": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.1,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "e890dada1e337b0f",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "dfb2d4cc8eb624ac": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.1,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "dfb2d4cc8eb624ac",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "d2c391ec82eb6fdc": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.1,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "d2c391ec82eb6fdc",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "0c686abf8ef19380": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.3,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "0c686abf8ef19380",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "cefc22afba43e5f8": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.3,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "cefc22afba43e5f8",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "e7a7abcc0d68a5b7": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.3,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "e7a7abcc0d68a5b7",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "0eacd4c67d50389c": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.3,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "0eacd4c67d50389c",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "432569902adc861f": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.3,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "432569902adc861f",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "18d292dc7476859b": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.3,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "18d292dc7476859b",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "dadb86d7916de950": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.3,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "dadb86d7916de950",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "3c4d2500eb88671e": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.3,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "3c4d2500eb88671e",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "6afd45604468fad0": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.3,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "6afd45604468fad0",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "b716e5a25cceaf23": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.3,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "b716e5a25cceaf23",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "04770f488e3436c0": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.5,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "04770f488e3436c0",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "be662cccbaca16b2": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.5,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "be662cccbaca16b2",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "c9f6899385fccf67": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.5,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "c9f6899385fccf67",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "ec8995143f52fb77": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.5,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "ec8995143f52fb77",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "ed349e60029bfcef": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.5,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "ed349e60029bfcef",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "2c2e1ebf524cd519": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.5,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "2c2e1ebf524cd519",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "8cd7fe6a3141fc09": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.5,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "8cd7fe6a3141fc09",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "b7ae8a0c980cdb98": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.5,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "b7ae8a0c980cdb98",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "4a35a1befbf3b229": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.5,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "4a35a1befbf3b229",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "a5b5f83fd7b7dc98": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.5,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "a5b5f83fd7b7dc98",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "e996fb70379bf09d": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.7,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "e996fb70379bf09d",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "e6db73634d32a4f7": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.7,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "e6db73634d32a4f7",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "c998c29313af4861": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.7,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "c998c29313af4861",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "f29cad323797b710": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.7,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "f29cad323797b710",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "f6ea5f9246144b45": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.7,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "f6ea5f9246144b45",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "59e1a8600123e0d7": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.7,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "59e1a8600123e0d7",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "4fd18ea5f6e7ee09": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.7,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "4fd18ea5f6e7ee09",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "d2b47b463b6394b5": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.7,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "d2b47b463b6394b5",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "2e14a0fb1e5eab3f": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.7,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "2e14a0fb1e5eab3f",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "532fb9018e6da23b": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.7,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "532fb9018e6da23b",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "df0f16b877b0e203": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.9,
+        "n_distractors": 0,
+        "similarity": "none"
+      },
+      "cell_hash": "df0f16b877b0e203",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "0bc81736ea90906e": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.9,
+        "n_distractors": 2,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "0bc81736ea90906e",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "8032c6b03e353a94": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.9,
+        "n_distractors": 2,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "8032c6b03e353a94",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "ad82958d4d243bb0": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.9,
+        "n_distractors": 2,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "ad82958d4d243bb0",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "5d36dc52189b6ea6": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.9,
+        "n_distractors": 5,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "5d36dc52189b6ea6",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "339ef0f9b68bbbb0": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.9,
+        "n_distractors": 5,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "339ef0f9b68bbbb0",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "f9b2c99c961b74f9": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.9,
+        "n_distractors": 5,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "f9b2c99c961b74f9",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "f18a250cc18c8c3a": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.9,
+        "n_distractors": 10,
+        "similarity": "shell_same"
+      },
+      "cell_hash": "f18a250cc18c8c3a",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "d1f823d2b26a26f0": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.9,
+        "n_distractors": 10,
+        "similarity": "shell_diff"
+      },
+      "cell_hash": "d1f823d2b26a26f0",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    },
+    "e611fde3263ff46d": {
+      "axes": {
+        "model_key": "olmo2_7b_instruct",
+        "context_length": 16384,
+        "needle_position": 0.9,
+        "n_distractors": 10,
+        "similarity": "shell_share"
+      },
+      "cell_hash": "e611fde3263ff46d",
+      "n_stage1": 24,
+      "n_total": 24,
+      "accuracy": 0.0,
+      "wilson_ci95": {
+        "lo": 0.0,
+        "hi": 0.13797620467498017
+      },
+      "behavioral_grade_counts": {
+        "correct": 0,
+        "distractor_hit": 0,
+        "other_wrong": 24,
+        "empty": 0
+      },
+      "oom_fallback_applied": false,
+      "effective_context_length": 16384
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "provenance": {
+    "script": "scripts/e5_robustness.py",
+    "code": {
+      "commit": "faf7ee02529c20cccd3c49385e4ba29b9cb1c12a",
+      "branch": "main",
+      "dirty": false,
+      "repo_root": "/content/rope-part3"
+    },
+    "config_hashes": {
+      "/content/rope-part3/configs/paths.yaml": "e084e49efd9c939e6ba2d76ab9b7cd8f2e05746855f4a9488f3b43de0755e0c3",
+      "/content/rope-part3/configs/preregistration.yaml": "345db496c5721638422a62d5a9ad030e555ef12a1e22b73e61f020779f2c8d7b"
+    },
+    "model_key": "mistral_7b_instruct",
+    "model_sha": null,
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "timestamp_utc": "2026-07-17T18:34:55.799957+00:00",
+    "platform": "Linux-6.6.122+-x86_64-with-glibc2.35",
+    "packages": {
+      "python": "3.12.13",
+      "numpy": "2.0.2",
+      "scipy": "1.16.3",
+      "torch": "2.11.0+cu128",
+      "transformers": "4.47.0"
+    },
+    "extra": {
+      "sensitivity_k_heads": 10,
+      "variants": [
+        "wu"
+      ]
+    }
+  },
+  "headline_variants": {
+    "wu": {
+      "m2_capture": 0.200836820083682,
+      "m1_silence": 0.28661087866108786,
+      "correct_attend": 0.11715481171548117,
+      "residual": 0.39539748953974896,
+      "window_limited": 0.0
+    },
+    "ksens": {},
+    "steps3": {},
+    "m2sens": {}
+  },
+  "seed_repeats": {},
+  "R_self": {},
+  "primary": {
+    "m2_capture": 0.8368200836820083,
+    "m1_silence": 0.0010460251046025104,
+    "correct_attend": 0.08054393305439331,
+    "residual": 0.08158995815899582,
+    "window_limited": 0.0
+  },
+  "m2_floor": {
+    "preregistered": 0.1,
+    "alternative": 0.15
+  }
+}
