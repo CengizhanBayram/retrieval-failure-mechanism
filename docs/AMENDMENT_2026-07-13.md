@@ -338,10 +338,30 @@ The implementation gate for both is self-patch + the never-op detector (enforced
 `e3_causal.py`, which aborts on failure). Order: llama-mlp may run immediately;
 qwen2.5-3b-v must fire before llama-v.
 
-**Reads.** A significant, margin-clearing `break` at `v` or `mlp` on llama3.1 turns
-the z_h null into a **positive** localisation ("the bottleneck is downstream of the
-attention row"). No effect at any site strengthens the dissociation across three
-intervention points. Either is reportable; both exploratory.
+**Result (run on the fixed code, exploratory).**
+
+*v — value cache-swap is CONFOUNDED, reported as a caution, not circuit evidence.*
+The swap fires strongly but **break-only**: qwen2.5-3b k=30 `break` = 0.989
+(control 0.549), llama3.1 k=39 `break` = **1.000** (control 0.098) with `repair` =
+**0.000**. This asymmetry is the signature of **content transport**: replacing the
+needle/distractor **value** vectors literally substitutes the answer content, so a
+success is destroyed (break → 1) but a failure is not repaired (repair → 0). It
+therefore does **not** isolate a value *pathway*; it is reported as a methodological
+caution. (The self-patch and never-op guards confirm the mechanism is real — the
+confound is scientific, not a code bug.)
+
+*mlp — the interpretable downstream site. Bidirectional on the causal model, null on
+llama3.1.* qwen2.5-3b: `break` 0.28→0.38 and `repair` ~0.34, both well over their
+~0.04–0.09 controls — the retrieval-head layers' MLP is causally involved.
+**llama3.1: null** — `break` 0.13 vs control 0.13, `repair` 0.10 vs control ~0.13,
+margin ≈ 0, **over all 12 of its retrieval-head layers** (k=39). 
+
+**Conclusion.** llama3.1's failure is **not localised to the retrieval-head circuit
+at either interpretable site**: not the head outputs (`z_h`, even at the full
+39-head set, §H) and not their layers' MLP (all 12 layers). The dissociation holds
+across two intervention points; the value site is uninterpretable (content-transport
+confound). This is an honest *strengthening* of the dissociation, not the positive
+localisation an effect would have given — reported as such, exploratory.
 
 ## L. Status of every run, and the order of operations
 

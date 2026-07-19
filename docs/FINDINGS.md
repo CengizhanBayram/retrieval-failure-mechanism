@@ -202,6 +202,22 @@ its **full 77-head set it clears the margin decisively** (break 0.478, margin +0
 **plausibly related to** its softcap + sliding-window attention, but that link is not
 tested here and is stated as conjecture, not result.
 
+### 4.1 Where is llama3.1's bottleneck? — value / MLP patch sites (exploratory)
+
+Since llama3.1's retrieval-head *outputs* (`z_h`) are sub-margin even at the full
+39-head set, the patch site was moved downstream (amendment §M):
+
+| site | qwen2.5-3b (causal ref.) | llama3.1 | reading |
+|---|---|---|---|
+| **v** (value cache-swap) | break 0.99, repair 0.00 | break **1.00**, repair **0.00** | **confounded** — break-only = content transport, not a value pathway; a **caution**, not evidence |
+| **mlp** (layer MLP) | **bidirectional** (break 0.28→0.38, repair ~0.34, ≫ control) | **null** (break 0.13 ≈ ctrl 0.13; repair 0.10 ≈ ctrl) over all **12** head-layers | mlp is causal in the causal model, **null** in llama3.1 |
+
+**llama3.1's failure is not localised to the retrieval-head circuit at either
+interpretable site** — not the head outputs (`z_h`) and not their layers' MLP. The
+dissociation holds across two intervention points; the value site is uninterpretable
+(content-transport confound). This *strengthens* the dissociation rather than turning
+it positive. **Exploratory.**
+
 ---
 
 ## 5. E5 — Robustness
