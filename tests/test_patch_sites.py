@@ -1,18 +1,22 @@
 """Patch-site tests (value/MLP follow-up, exploratory).
 
-The site generalisation (z_h | v | mlp) must keep the one hard invariant the
-whole causal method rests on: patching a recipient with ITS OWN activation is a
-token-identical no-op. For v and mlp this also exercises the *shared-write*
-correctness — several query heads map to the same KV slice (v) or the same MLP
-output (mlp), so the self-patch writes the same value repeatedly; it must still be
-a no-op. If a hook were on the wrong tensor, or the slice/GQA map were wrong, the
-self-patch would diverge — the same guard the positive control uses at scale.
+Two invariants the whole causal method rests on, per site:
+  * self-patch (recipient <- its OWN activation) is a token-identical no-op;
+  * a FOREIGN donor actually changes the target tensor (the never-op detector —
+    what self-patch cannot catch, because for self-patch 'no change' is correct).
+
+site='v' is a KV-CACHE swap at the CONTEXT span positions (retrieval reads the
+value vectors there, not at the answer step), so its tests pass explicit
+positions. If a hook were on the wrong tensor, the wrong positions, or the GQA map
+were wrong, one of these two invariants would break — the same guards the E3
+positive control uses at scale.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import yaml
 
 from failure_mech import patching
@@ -23,15 +27,20 @@ TEXT = "The access code for the golden lantern is K7QW2Z. What is the access cod
 
 
 def _heads(model):
-    # a mix that forces KV-sharing (v) and layer-sharing (mlp): several heads per layer
+    # several heads per layer -> forces KV-sharing (v) and layer-sharing (mlp)
     return [(0, 0), (0, 1), (0, 3), (1, 0), (1, 2), (1, 3)]
+
+
+def _ctx_positions(tok):
+    n = len(tok(TEXT, add_special_tokens=True)["input_ids"])
+    return [p for p in (2, 3, 4, 5) if p < n - 1]   # a few context (non-answer) tokens
 
 
 def test_self_patch_v_is_noop(tiny_llama):
     model, tok = tiny_llama
     ids = tok(TEXT, add_special_tokens=True)["input_ids"]
-    plain, patched = patching.self_patch_generate(model, tok, ids, _heads(model),
-                                                  DECODING, site="v")
+    plain, patched = patching.self_patch_generate(
+        model, tok, ids, _heads(model), DECODING, site="v", positions=_ctx_positions(tok))
     assert plain.token_ids == patched.token_ids, "site='v' self-patch changed the generation"
 
 
@@ -43,33 +52,35 @@ def test_self_patch_mlp_is_noop(tiny_llama):
     assert plain.token_ids == patched.token_ids, "site='mlp' self-patch changed the generation"
 
 
-def test_v_donor_is_the_kv_slice_shared_across_query_heads(tiny_llama):
-    """Query heads sharing a KV head must capture the SAME donor value at site='v'
-    (they read the same v_proj slice)."""
-    import numpy as np
-    model, tok = tiny_llama
-    ids = tok(TEXT, add_special_tokens=True)["input_ids"]
-    n_q, n_kv = patching.panel.head_counts(model)
-    if n_q == n_kv:
-        return  # MHA tiny model: no sharing to test; the no-op tests still cover it
-    group = n_q // n_kv
-    # two query heads in the same KV group, same layer
-    h_a, h_b = 0, 1 if group >= 2 else 0
-    donor = patching.capture_donor_z(model, tok, ids, [(0, h_a), (0, h_b)], DECODING, site="v")
-    if patching.panel.query_to_kv_head(h_a, n_q, n_kv) == patching.panel.query_to_kv_head(h_b, n_q, n_kv):
-        assert np.array_equal(donor[(0, h_a)], donor[(0, h_b)]), \
-            "query heads in one KV group must carry the same v-slice donor"
-
-
-def test_patch_with_foreign_donor_can_change_generation_v(tiny_llama):
-    """A donor from a DIFFERENT prompt applied at site='v' should be able to change
-    the output — proves the patch is actually applied, not a silent no-op."""
+def test_foreign_donor_changes_tensor_every_site(tiny_llama):
+    """The never-op detector: a donor from a DIFFERENT prompt must change the target
+    tensor at every site. Guards against a hook that fires but never writes what the
+    model reads (the exact bug the first v implementation had)."""
     model, tok = tiny_llama
     a = tok(TEXT, add_special_tokens=True)["input_ids"]
     b = tok("Numbers drift across a quiet field near the mill. What is the access code?",
             add_special_tokens=True)["input_ids"]
     heads = [(l, h) for l in range(model.config.num_hidden_layers)
              for h in range(model.config.num_attention_heads)]
-    donor_b = patching.capture_donor_z(model, tok, b, heads, DECODING, site="v")
-    patched = patching.generate_with_patch(model, tok, a, heads, donor_b, DECODING, site="v")
-    assert len(patched.token_ids) <= DECODING["decoding"]["max_new_tokens"]
+    for site, pos in (("z_h", None), ("mlp", None), ("v", _ctx_positions(tok))):
+        donor_b = patching.capture_donor_z(model, tok, b, heads, DECODING, site=site,
+                                           positions=pos)
+        changed = patching.patch_changes_tensor(model, tok, a, heads, donor_b, DECODING,
+                                                site=site, positions=pos)
+        assert changed, f"site={site}: foreign donor did NOT change the tensor (never-op)"
+
+
+def test_v_donor_is_the_kv_slice_over_positions(tiny_llama):
+    """At site='v' the donor is the value slice over the given positions, and query
+    heads sharing a KV head capture the same slice."""
+    model, tok = tiny_llama
+    ids = tok(TEXT, add_special_tokens=True)["input_ids"]
+    pos = _ctx_positions(tok)
+    n_q, n_kv = patching.panel.head_counts(model)
+    donor = patching.capture_donor_z(model, tok, ids, [(0, 0), (0, 1)], DECODING,
+                                     site="v", positions=pos)
+    assert donor[(0, 0)].shape[0] == len(pos), "v donor must span the patched positions"
+    if n_q != n_kv and patching.panel.query_to_kv_head(0, n_q, n_kv) == \
+            patching.panel.query_to_kv_head(1, n_q, n_kv):
+        assert np.array_equal(donor[(0, 0)], donor[(0, 1)]), \
+            "query heads in one KV group must carry the same v-slice donor"

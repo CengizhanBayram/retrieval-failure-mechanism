@@ -296,12 +296,28 @@ full-set result), i.e. the retrieval-head *outputs* are not the bottleneck. The
 open question is *where* the bottleneck is. Two candidate downstream sites are
 added as an exploratory follow-up:
 
-* **`v`** — the `v_proj` value slice. GQA-aware: a query head maps to its KV head
-  (`kv = h // (n_q/n_kv)`), so patching a retrieval head's value patches the shared
-  KV slice; the output records `kv_heads_patched` and `query_heads_affected` (the
-  GQA side-effect count). Not supported on fused-qkv models (phi3) — flagged.
-* **`mlp`** — the layer's whole MLP output. Not head-indexed; the control is
-  `|L_ret|` random *other* layers' MLP (recorded, capped by layers available).
+* **`v`** — a **KV-cache swap**. The retrieval heads' value vectors at the
+  **context span positions** (needle + distractor spans) are replaced with the
+  donor's, because retrieval reads V from the cached context, not from the answer
+  step. GQA-aware: a query head maps to its KV head (`kv = h // (n_q/n_kv)`), so a
+  retrieval head patches the shared KV slice; the output records `kv_heads_patched`
+  and `query_heads_affected` (the GQA side-effect count). Control = the same number
+  of KV heads from **outside** the retrieval KV set, cache-swapped. Not supported on
+  fused-qkv models (phi3) — flagged.
+
+  **Correction, recorded not hidden.** The **first** v implementation patched the
+  **generation-step** `v_proj` output — **structurally null**: retrieval never reads
+  that value (it reads the *cached context* V), so the intervention could not fire.
+  It was run once, the results were invalid, and they are **discarded**; the archive
+  records the fact here rather than keeping wrong numbers. Replaced with the
+  KV-cache span swap above. Two guards now make a repeat impossible: the per-site
+  self-patch no-op **and** a **never-op detector** (a foreign donor must change the
+  target tensor; self-patch alone cannot catch a hook that never writes). The
+  non-z_h checkpoint fingerprint includes `patching.py`, so the fix auto-invalidates
+  the old (null) v checkpoints while the completed z_h sweep is untouched.
+* **`mlp`** — the layer's whole MLP output at the answer step. Not head-indexed; the
+  control is `|L_ret|` random *other* layers' MLP (recorded, capped by layers
+  available). Its mechanism is unchanged from the first commit.
 
 **Guards (unchanged from z_h).** Donor/recipient pairing from `pairs_by_cell`; the
 flip definition (unpadded no-patch baseline); the 20 pp margin, paired permutation,
@@ -315,11 +331,17 @@ reproduce a large z_h-like effect before any llama3.1 null is trusted).
 touching the pre-registered z_h run. `preregistration.yaml` is untouched; every
 site ≠ z_h result is **exploratory**.
 
-**Reads.** A significant, margin-clearing `break` effect at `v` or `mlp` on
-llama3.1 would turn the z_h null into a **positive** localisation ("the bottleneck
-is downstream of the attention row"). No effect at any site strengthens the
-dissociation across three intervention points. Either is reportable; both
-exploratory.
+**Verification gate.** The **v** anchor is directional: on qwen2.5-3b (retrieval is
+causal) the cache-swap **must** fire a large `break`, else a llama3.1 v-null is not
+trusted. For **mlp**, a null is a *real finding* and is **not** required to fire.
+The implementation gate for both is self-patch + the never-op detector (enforced in
+`e3_causal.py`, which aborts on failure). Order: llama-mlp may run immediately;
+qwen2.5-3b-v must fire before llama-v.
+
+**Reads.** A significant, margin-clearing `break` at `v` or `mlp` on llama3.1 turns
+the z_h null into a **positive** localisation ("the bottleneck is downstream of the
+attention row"). No effect at any site strengthens the dissociation across three
+intervention points. Either is reportable; both exploratory.
 
 ## L. Status of every run, and the order of operations
 

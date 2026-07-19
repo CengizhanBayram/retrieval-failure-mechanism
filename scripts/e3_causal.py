@@ -82,10 +82,22 @@ def _grade_plain(model, tokenizer, probe, decoding_cfg) -> bool:
     return grading.grade_generation(gen.text, probe.needle_value, probe.distractor_values).correct
 
 
+def _span_positions(probe):
+    """Context token positions whose value vectors retrieval reads: the needle span
+    + every distractor span. Used by site='v' (the KV-cache swap). Cell skeletons
+    are token-aligned, so donor and recipient share these indices."""
+    pos = set(range(probe.needle_span.start, probe.needle_span.end))
+    for d in probe.distractor_spans:
+        pos.update(range(d.start, d.end))
+    return sorted(pos)
+
+
 def _grade_patched(model, tokenizer, probe, heads, donor, decoding_cfg, patch_mode,
                    site="z_h") -> bool:
+    positions = _span_positions(probe) if site == "v" else None
     gen = patching.generate_with_patch(model, tokenizer, probe.input_ids, heads, donor,
-                                       decoding_cfg, patch_mode=patch_mode, site=site)
+                                       decoding_cfg, patch_mode=patch_mode, site=site,
+                                       positions=positions)
     return grading.grade_generation(gen.text, probe.needle_value, probe.distractor_values).correct
 
 
@@ -136,17 +148,31 @@ def _self_patch_check(model, tokenizer, cell_pairs, heads, decoding_cfg, patch_m
     for pairs in cell_pairs.values():
         if not pairs:
             continue
-        _si, _sp, _fi, fp = pairs[0]
+        _si, sp, _fi, fp = pairs[0]
+        pos = _span_positions(fp) if site == "v" else None
         donor_self = patching.capture_donor_z(model, tokenizer, fp.input_ids, heads,
-                                              decoding_cfg, site=site)
+                                              decoding_cfg, site=site, positions=pos)
         plain = patching.generate_plain(model, tokenizer, fp.input_ids, decoding_cfg)
         patched = patching.generate_with_patch(model, tokenizer, fp.input_ids, heads,
                                                donor_self, decoding_cfg,
-                                               patch_mode=patch_mode, site=site)
+                                               patch_mode=patch_mode, site=site, positions=pos)
         if plain.token_ids != patched.token_ids:
             raise SelfPatchError(
                 f"Self-patch mismatch (model={model_key}, site={site}). ABORTING (§4.4). "
                 f"The {site} hook is on the wrong tensor or the dtype round-trip is lossy.")
+        # Never-op detector (§ item 2): a FOREIGN donor (sp into fp) must change the
+        # target tensor; self-patch alone cannot catch a hook that never writes.
+        foreign = patching.capture_donor_z(model, tokenizer, sp.input_ids, heads,
+                                           decoding_cfg, site=site,
+                                           positions=_span_positions(sp) if site == "v" else None)
+        changed = patching.patch_changes_tensor(
+            model, tokenizer, fp.input_ids, heads, foreign, decoding_cfg,
+            site=site, positions=pos)
+        if not changed:
+            raise SelfPatchError(
+                f"Never-op (model={model_key}, site={site}): a foreign donor did not "
+                f"change the {site} tensor. The hook is not writing the tensor retrieval "
+                "reads. ABORTING.")
         return True
     return True  # no pairs to check
 
@@ -269,12 +295,16 @@ def main(argv=None):
                 bt["n_tied_inside_k"], bt["n_tied_excluded"])
 
     # ---- Checkpoints: one per k, so a killed session loses at most one k ------
+    # A non-z_h site's per-k result depends on the patcher, so its fingerprint
+    # includes patching.py — this invalidates the OLD (structurally-null) v
+    # checkpoints while leaving the completed z_h sweep untouched.
+    extra_src = [C.REPO_ROOT / "src/failure_mech/patching.py"] if site != "z_h" else []
     ckpt = C.CheckpointManager(
         results_dir, exp_name, args.model, fresh=args.fresh,
         fingerprint=C.probe_fingerprint(
             [C.config_path("e3.yaml"), C.config_path("grid.yaml"),
              C.config_path("decoding.yaml"), PR.resolve_prereg_path(args.prereg)],
-            mcfg["revision"], seed))
+            mcfg["revision"], seed, extra_sources=extra_src))
 
     # ---- Precompute pairs + unpadded baselines ONCE (independent of k) -------
     # Pairs depend only on (cell, seed); baselines and the no-patch rerun depend
@@ -342,8 +372,16 @@ def main(argv=None):
             }
         elif site == "mlp":
             layers = _site_units(treat, "mlp", n_q, n_kv)
-            site_meta[str(k)] = {"layers_patched": len(layers),
-                                 "retrieval_query_heads": k}
+            n_ret = len(layers)   # |L_ret|: distinct layers the retrieval heads span
+            n_layers = int(model.config.num_hidden_layers)
+            site_meta[str(k)] = {
+                "layers_patched": n_ret,          # == |L_ret|; the mlp localisation value
+                "n_ret_layers": n_ret,
+                # the random control needs |L_ret| OTHER layers; record if it is capped
+                "control_layers_available": n_layers - n_ret,
+                "control_capped": (n_layers - n_ret) < n_ret,
+                "retrieval_query_heads": k,
+            }
 
     # ---- Flatten the pairs and precompute every random-control head set -------
     # The control seeds depend on (pair, k) exactly as before, so the head sets
@@ -380,10 +418,14 @@ def main(argv=None):
         for i, (_h, _si, sp, _fi, fp) in enumerate(pairs_flat, start=1):
             need_sp = set(heads_max) | {lh for k in k_list for lh in rheads_r[(i, k)]}
             need_fp = set(heads_max) | {lh for k in k_list for lh in rheads_b[(i, k)]}
+            pos_sp = _span_positions(sp) if site == "v" else None
+            pos_fp = _span_positions(fp) if site == "v" else None
             donors_sp[i] = patching.capture_donor_z(model, tokenizer, sp.input_ids,
-                                                    sorted(need_sp), decoding_cfg, site=site)
+                                                    sorted(need_sp), decoding_cfg,
+                                                    site=site, positions=pos_sp)
             donors_fp[i] = patching.capture_donor_z(model, tokenizer, fp.input_ids,
-                                                    sorted(need_fp), decoding_cfg, site=site)
+                                                    sorted(need_fp), decoding_cfg,
+                                                    site=site, positions=pos_fp)
         log.info("donors captured for %d pairs (%d prompt forwards; the per-(pair,k) "
                  "path would have needed %d).", len(pairs_flat), 2 * len(pairs_flat),
                  4 * len(k_list) * len(pairs_flat))
@@ -476,8 +518,8 @@ def main(argv=None):
                "note": "authoritative BH across 4 models x 2 directions is finalized in E4"})
     suffix = f"_{args.tag}" if args.tag else ""
     C.write_json(results_dir / f"e3_causal_{args.model}{suffix}.json",
-                 {"provenance": provenance, "k": out_by_k,
-                  "head_set_ties": head_set_ties})
+                 {"provenance": provenance, "site": site, "k": out_by_k,
+                  "site_meta": site_meta, "head_set_ties": head_set_ties})
     log.info("E3 done for %s (site=%s, k_list=%s).", args.model, site, k_list)
     return 0
 

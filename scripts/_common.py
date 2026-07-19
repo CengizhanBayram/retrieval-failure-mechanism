@@ -239,19 +239,28 @@ def _json_default(o):
     raise TypeError(f"Not JSON-serialisable: {type(o)}")
 
 
-def probe_fingerprint(config_paths: list, model_sha, seed) -> str:
+def probe_fingerprint(config_paths: list, model_sha, seed, extra_sources=()) -> str:
     """Fingerprint of everything that determines a cell's per-sample results: the
     config bytes (grid/decoding — templates, vocab, chat-template flag, decoding
     spec), the pinned model SHA, the seed, AND the probe-generation source
     (probes.py, spans.py). Including the code means a change to e.g. the
     single-token filter invalidates stale checkpoints instead of silently mixing
-    old- and new-filter probes."""
+    old- and new-filter probes.
+
+    ``extra_sources`` adds more source files to the hash — E3 passes patching.py for
+    a non-z_h --site run, so changing the patcher (e.g. the v cache-swap fix)
+    invalidates the OLD site checkpoints, while the z_h fingerprint (which does not
+    include patching.py) is unchanged and its completed sweep is not recomputed."""
     import hashlib
     h = hashlib.sha256()
     for p in config_paths:
         h.update(Path(p).read_bytes())
     for src in ("src/failure_mech/probes.py", "src/failure_mech/spans.py"):
         sp = REPO_ROOT / src
+        if sp.exists():
+            h.update(sp.read_bytes())
+    for src in extra_sources:
+        sp = Path(src)
         if sp.exists():
             h.update(sp.read_bytes())
     h.update(str(model_sha).encode("utf-8"))

@@ -65,12 +65,18 @@ class _SitePatcher:
                    layer's single MLP output — again an idempotent shared write.
     """
 
-    def __init__(self, model, heads: list[tuple[int, int]], site: str = "z_h"):
+    def __init__(self, model, heads: list[tuple[int, int]], site: str = "z_h",
+                 positions=None):
         if site not in SITES:
             raise PatchError(f"unknown site {site!r}; expected one of {SITES}")
         self.model = model
         self.site = site
         self.heads = heads
+        # v is a KV-CACHE swap: retrieval reads the value vectors at the CONTEXT
+        # positions (needle + distractor tokens), NOT at the answer step, so v
+        # captures/patches those positions of the PROMPT forward. Skeletons are
+        # token-aligned within a cell, so donor and recipient share these indices.
+        self.positions = list(positions) if positions is not None else None
         self.by_layer: dict[int, list[int]] = {}
         for (l, h) in heads:
             self.by_layer.setdefault(l, []).append(h)
@@ -79,9 +85,14 @@ class _SitePatcher:
         self.capture = False
         self.patch_enabled = False
         self.patch_mode = "first_step"
+        self.verify = False            # never-op detector: assert the tensor changed
+        self.tensor_changed = False    # set True once a differing donor actually altered x
         self.donor: dict[tuple[int, int], object] = {}
         self.captured: dict[tuple[int, int], object] = {}
         self._handles = []
+        if site == "v" and self.positions is None:
+            raise PatchError("site='v' needs the context positions to swap (needle + "
+                             "distractor spans); pass positions=...")
 
     def _slice(self, h: int):
         """(start, end) columns for query head ``h`` at this site, or None for the
@@ -108,9 +119,38 @@ class _SitePatcher:
         return _mlp_module(self.model, layer), "post"
 
     def _apply(self, x, layer: int):
-        """Capture (read-only) and/or patch (return modified) at the last position.
-        Returns the modified tensor when patching, else None (no change)."""
-        is_prompt = x.shape[1] > 1     # answer step = last pos of the prompt forward
+        """Capture (read-only) and/or patch (return modified). Returns the modified
+        tensor when patching, else None. The site sets WHICH positions:
+          v          -> the context span positions of the PROMPT forward (cache swap);
+          z_h / mlp  -> the answer step (last position of the prompt forward)."""
+        import torch
+        is_prompt = x.shape[1] > 1
+        if self.site == "v":
+            if not is_prompt:
+                return None            # V is written to the cache on the prompt forward only
+            pos = [p for p in self.positions if p < x.shape[1]]
+            if self.capture:
+                for h in self.by_layer[layer]:
+                    a, b = self._slice(h)
+                    self.captured[(layer, h)] = x[0, pos, a:b].detach().clone()  # [n_pos, hd]
+            if self.patch_enabled:
+                x = x.clone()
+                for h in self.by_layer[layer]:
+                    dv = self.donor.get((layer, h))
+                    if dv is None:
+                        continue
+                    a, b = self._slice(h)
+                    vec = dv.to(device=x.device, dtype=x.dtype)      # [n_pos, hd]
+                    n = min(vec.shape[0], len(pos))
+                    if self.verify and not self.tensor_changed and n:
+                        if not torch.equal(x[0, pos[:n], a:b], vec[:n]):
+                            self.tensor_changed = True
+                    for j in range(n):
+                        x[:, pos[j], a:b] = vec[j]
+                return x
+            return None
+
+        # z_h / mlp: answer step (last position)
         if self.capture and is_prompt:
             for h in self.by_layer[layer]:
                 sl = self._slice(h)
@@ -124,6 +164,9 @@ class _SitePatcher:
                     continue
                 vec = dv.to(device=x.device, dtype=x.dtype)
                 sl = self._slice(h)
+                target = x[:, -1, sl[0]:sl[1]] if sl else x[:, -1, :]
+                if self.verify and not self.tensor_changed and not torch.equal(target, vec):
+                    self.tensor_changed = True
                 if sl:
                     x[:, -1, sl[0]:sl[1]] = vec
                 else:
@@ -284,32 +327,32 @@ def generate_plain_batch(model, tokenizer, input_ids_list, decoding_cfg) -> list
 
 
 def capture_donor_z(model, tokenizer, input_ids, heads, decoding_cfg,
-                    *, answer_steps: int = 1, site: str = "z_h") -> dict:
-    """Capture the donor activation at the answer step for ``heads``, at ``site``
-    (z_h | v | mlp).
+                    *, answer_steps: int = 1, site: str = "z_h", positions=None) -> dict:
+    """Capture the donor activation for ``heads`` at ``site`` (z_h | v | mlp).
 
+    z_h / mlp: the answer-step vector. v: the value slice at the CONTEXT
+    ``positions`` (needle + distractor spans) — the cache the answer step reads.
     Captured during the SAME ``model.generate`` prompt forward that
-    ``generate_with_patch`` patches, so the donor value matches exactly and
-    self-patch stays bitwise-identical. Keyed by query head ``(layer, head)``;
-    for site='v'/'mlp' heads that share a KV head / layer carry the same value.
-    Returns ``{(layer, head): np.ndarray float32}``.
+    ``generate_with_patch`` patches, so self-patch stays bitwise-identical. Keyed
+    by query head; for v/mlp heads sharing a KV head / layer carry the same value.
     """
-    ctrl = _SitePatcher(model, heads, site=site)
+    ctrl = _SitePatcher(model, heads, site=site, positions=positions)
     with ctrl:
         ctrl.capture = True
         ctrl.patch_enabled = False
-        _generate_hf(model, tokenizer, input_ids, decoding_cfg)  # prompt forward captures step-0
+        _generate_hf(model, tokenizer, input_ids, decoding_cfg)  # prompt forward captures
     return {lh: v.float().cpu().numpy() for lh, v in ctrl.captured.items()}
 
 
 def generate_with_patch(
     model, tokenizer, input_ids, heads, donor_z: dict, decoding_cfg,
-    *, patch_mode: str = "first_step", site: str = "z_h",
+    *, patch_mode: str = "first_step", site: str = "z_h", positions=None,
 ) -> Generation:
     """Greedy generation with the target heads' activation at ``site`` replaced by
-    ``donor_z`` (z_h | v | mlp)."""
+    ``donor_z`` (z_h | v | mlp). For v, ``positions`` are the context tokens whose
+    value vectors are swapped in the KV cache."""
     import torch
-    ctrl = _SitePatcher(model, heads, site=site)
+    ctrl = _SitePatcher(model, heads, site=site, positions=positions)
     for (l, h) in heads:
         v = donor_z.get((l, h))
         if v is not None:
@@ -323,16 +366,40 @@ def generate_with_patch(
 
 def self_patch_generate(model, tokenizer, input_ids, heads, decoding_cfg,
                         *, patch_mode: str = "first_step",
-                        site: str = "z_h") -> tuple[Generation, Generation]:
+                        site: str = "z_h", positions=None) -> tuple[Generation, Generation]:
     """Self-patch: patch the recipient with ITS OWN activation at ``site``. Returns
     (plain, patched); the two MUST be token-identical (§4.4) — callers assert it
     and abort on failure. Works for every site (the write replaces a value with
-    itself, idempotent even where heads share a KV slice or an MLP output)."""
-    donor = capture_donor_z(model, tokenizer, input_ids, heads, decoding_cfg, site=site)
+    itself, idempotent even where heads share a KV slice / MLP output / positions)."""
+    donor = capture_donor_z(model, tokenizer, input_ids, heads, decoding_cfg,
+                            site=site, positions=positions)
     plain = generate_plain(model, tokenizer, input_ids, decoding_cfg)
     patched = generate_with_patch(model, tokenizer, input_ids, heads, donor,
-                                  decoding_cfg, patch_mode=patch_mode, site=site)
+                                  decoding_cfg, patch_mode=patch_mode, site=site,
+                                  positions=positions)
     return plain, patched
+
+
+def patch_changes_tensor(model, tokenizer, recipient_ids, heads, foreign_donor,
+                         decoding_cfg, *, site: str = "z_h", positions=None) -> bool:
+    """Never-op detector (§ item 2): patch the recipient with a FOREIGN donor
+    (donor != recipient) and report whether the target tensor actually changed.
+    Self-patch cannot catch a hook that never writes (its donor equals the
+    recipient, so 'no change' is correct); this can. Returns True iff the patched
+    slice differed from the original somewhere."""
+    import torch
+    ctrl = _SitePatcher(model, heads, site=site, positions=positions)
+    for (l, h) in heads:
+        v = foreign_donor.get((l, h))
+        if v is not None:
+            ctrl.donor[(l, h)] = torch.as_tensor(np.asarray(v))
+    with ctrl:
+        ctrl.capture = False
+        ctrl.patch_enabled = True
+        ctrl.patch_mode = "first_step"
+        ctrl.verify = True
+        _generate_hf(model, tokenizer, recipient_ids, decoding_cfg)
+    return bool(ctrl.tensor_changed)
 
 
 # ---------------------------------------------------------------------------
