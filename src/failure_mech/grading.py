@@ -38,7 +38,7 @@ GRADES = (CORRECT, DISTRACTOR_HIT, OTHER_WRONG, EMPTY)
 def normalize(ans: str) -> str:
     """Strip whitespace/punctuation and casefold, leaving only [0-9a-z].
 
-    Only the text before the first newline is considered — greedy decoding stops
+    Only the text before the first newline is considered - greedy decoding stops
     on newline, and any trailing tokens after a newline are not part of the
     answer (§1.4).
     """

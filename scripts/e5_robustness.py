@@ -1,5 +1,5 @@
 """
-E5 — robustness of the E2/E3 headlines (task §9).
+E5 - robustness of the E2/E3 headlines (task §9).
 
 (a) Recompute E2 headline metrics on the Wu-detector head list (``--detector
     copy``) and at ``sensitivity_k_heads``.

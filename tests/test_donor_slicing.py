@@ -1,6 +1,6 @@
 """The E3 speedup must be a speedup and nothing else.
 
-E3 used to call ``capture_donor_z`` once per (pair, k) — a full prompt forward
+E3 used to call ``capture_donor_z`` once per (pair, k) - a full prompt forward
 each time. It now captures ONCE per probe over the union of every head set that
 probe will ever donate through, and slices per k.
 
@@ -28,7 +28,7 @@ TEXT = "The access code for the golden lantern is K7QW2Z. What is the access cod
 
 def test_donor_is_bitwise_identical_when_captured_with_a_superset(tiny_llama):
     """The donor for a subset of heads must be EXACTLY the same array whether it
-    was captured alone or as part of a larger capture — bitwise, not 'close'."""
+    was captured alone or as part of a larger capture - bitwise, not 'close'."""
     model, tok = tiny_llama
     ids = tok(TEXT, add_special_tokens=True)["input_ids"]
 
@@ -42,7 +42,7 @@ def test_donor_is_bitwise_identical_when_captured_with_a_superset(tiny_llama):
     for lh in subset:
         assert np.array_equal(alone[lh], together[lh]), (
             f"donor for head {lh} changed depending on which other heads were "
-            "captured — the E3 union-capture optimisation is NOT sound")
+            "captured - the E3 union-capture optimisation is NOT sound")
 
 
 def test_patching_with_a_sliced_donor_matches_patching_with_a_fresh_one(tiny_llama):
@@ -65,4 +65,4 @@ def test_patching_with_a_sliced_donor_matches_patching_with_a_fresh_one(tiny_lla
 
     assert g_fresh.token_ids == g_sliced.token_ids, (
         "patching with a sliced donor diverged from patching with a freshly captured "
-        "one — E3's per-k results would silently change")
+        "one - E3's per-k results would silently change")

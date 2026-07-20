@@ -1,11 +1,11 @@
 """
 Head-output (z_h) activation patching + donor store (task §4.4).
 
-``z_h`` is the per-head attention output BEFORE o_proj — i.e. the input to
+``z_h`` is the per-head attention output BEFORE o_proj - i.e. the input to
 ``o_proj``, laid out as ``[..., n_heads * head_dim]`` with head ``h`` occupying
 columns ``[h*head_dim, (h+1)*head_dim)``. We capture it with a forward-PRE-hook
 on ``o_proj`` (which sees exactly that tensor) and patch it by returning a
-modified input — never touching model weights.
+modified input - never touching model weights.
 
 Runs (§4.4): repair (failure<-success), break (success<-failure), random-control
 (same k, non-retrieval heads), no-patch rerun (flip base rate) and SELF-PATCH
@@ -53,7 +53,7 @@ class _SitePatcher:
     the site only changes WHICH tensor slice that key maps to:
 
       site="z_h" : forward-PRE-hook on ``o_proj``; slice ``[h*hd:(h+1)*hd]`` of its
-                   input (the concatenated per-head outputs). The original path —
+                   input (the concatenated per-head outputs). The original path -
                    bitwise-identical to before.
       site="v"   : forward-hook on ``v_proj`` OUTPUT; slice ``[kv*hd:(kv+1)*hd]``
                    where ``kv = query_to_kv_head(h)``. GQA: query heads sharing a
@@ -62,7 +62,7 @@ class _SitePatcher:
                    head-keyed donor dict intact).
       site="mlp" : forward-hook on the layer MLP OUTPUT; the WHOLE vector (the MLP
                    is not head-indexed), so every head in a layer maps to that
-                   layer's single MLP output — again an idempotent shared write.
+                   layer's single MLP output - again an idempotent shared write.
     """
 
     def __init__(self, model, heads: list[tuple[int, int]], site: str = "z_h",
@@ -212,7 +212,7 @@ def _OProjPatcher(model, heads):
 def _generate_hf(model, tokenizer, input_ids, decoding_cfg) -> "Generation":
     """One-prompt greedy generation via ``model.generate`` (robust cache handling
     for every architecture, incl. Gemma-2's fixed-size HybridCache near its max
-    position — which the old manual token loop mishandled). Any active o_proj
+    position - which the old manual token loop mishandled). Any active o_proj
     hook fires during generate, so it works for both plain and patched runs."""
     return generate_plain_batch(model, tokenizer, [list(input_ids)], decoding_cfg)[0]
 
@@ -291,7 +291,7 @@ def generate_plain_batch(model, tokenizer, input_ids_list, decoding_cfg) -> list
     """Greedy generation for many prompts, TOKEN-BUDGETED and order-preserving.
 
     Used for the no-hook GRADING passes (E1, and the E2/E3 pairing step). The
-    caller may pass ALL of a cell's probes at once — this chunks them by
+    caller may pass ALL of a cell's probes at once - this chunks them by
     ``batch.max_tokens_per_batch`` (length-sorted for packing, then mapped back
     to input order) so a 100-probe x 16k cell never becomes one 1.6M-token batch
     (that OOMs even an A100). Each chunk is GPU-adaptive (§ _generate_batch_
@@ -331,7 +331,7 @@ def capture_donor_z(model, tokenizer, input_ids, heads, decoding_cfg,
     """Capture the donor activation for ``heads`` at ``site`` (z_h | v | mlp).
 
     z_h / mlp: the answer-step vector. v: the value slice at the CONTEXT
-    ``positions`` (needle + distractor spans) — the cache the answer step reads.
+    ``positions`` (needle + distractor spans) - the cache the answer step reads.
     Captured during the SAME ``model.generate`` prompt forward that
     ``generate_with_patch`` patches, so self-patch stays bitwise-identical. Keyed
     by query head; for v/mlp heads sharing a KV head / layer carry the same value.
@@ -368,7 +368,7 @@ def self_patch_generate(model, tokenizer, input_ids, heads, decoding_cfg,
                         *, patch_mode: str = "first_step",
                         site: str = "z_h", positions=None) -> tuple[Generation, Generation]:
     """Self-patch: patch the recipient with ITS OWN activation at ``site``. Returns
-    (plain, patched); the two MUST be token-identical (§4.4) — callers assert it
+    (plain, patched); the two MUST be token-identical (§4.4) - callers assert it
     and abort on failure. Works for every site (the write replaces a value with
     itself, idempotent even where heads share a KV slice / MLP output / positions)."""
     donor = capture_donor_z(model, tokenizer, input_ids, heads, decoding_cfg,

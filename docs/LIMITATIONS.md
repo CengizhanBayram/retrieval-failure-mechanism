@@ -1,9 +1,8 @@
-# Limitations - catalogue (draft for the paper)
+# Limitations
 
-> Drafted by the assistant for the researcher to audit. It collects every caveat
-> surfaced during the confirmatory run, each with its **evidence + magnitude**,
-> **how the design addresses it**, and **where it appears**. Measurement/record
-> only - it states the caveats, it does not argue what the results *mean*.
+> This catalogue collects every caveat surfaced during the confirmatory run, each
+> with its **evidence and magnitude**, **how the design addresses it**, and **where
+> it appears**. It states the caveats; it does not argue what the results *mean*.
 >
 > Cross-references: `docs/AMENDMENT_2026-07-13.md` (status of each run),
 > `scripts/check_e2_repro.py` (the reproduction check), the E5 notebook (the

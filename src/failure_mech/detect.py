@@ -1,9 +1,9 @@
 """
 Detection-artifact reader (task §0, §6, §9).
 
-Reads the Part-2 detection artifact for a model — one JSON per (model, seed) at
-``datas/results/profile/{panel_key}_seed{seed}.json`` — and exposes a canonical
-top-k ranked retrieval-head list. Part 3 NEVER re-detects (§6); it consumes this.
+Reads the prior detector's detection artifact for a model - one JSON per (model, seed) at
+``datas/results/profile/{panel_key}_seed{seed}.json`` - and exposes a canonical
+top-k ranked retrieval-head list. this repo NEVER re-detects (§6); it consumes this.
 
 The artifact stores ``argmax_heads``/``copy_heads`` SORTED BY (layer, head), not
 by score, so a canonical top-k requires ranking the detected heads by their
@@ -65,7 +65,7 @@ class Detection:
 
         The detector score saturates at 1.0, so several heads can share the top
         score exactly. When that happens the top-k set is not selected by
-        evidence — it is selected by the (layer, head) tie-break, i.e. by sort
+        evidence - it is selected by the (layer, head) tie-break, i.e. by sort
         order. Any causal claim over such a set (in particular a NULL: "patching
         the top-k heads did nothing") is confounded with the arbitrariness of
         WHICH tied heads got patched.
@@ -74,7 +74,7 @@ class Detection:
         top-10 set is 10 arbitrary members of a 13-way tie.
 
         Returns the score at the cut, how many heads tie it, and how many of
-        those made it in — ``arbitrary`` is True when the cut splits a tie.
+        those made it in - ``arbitrary`` is True when the cut splits a tie.
         """
         scores = self.argmax_scores if detector == "argmax" else self.copy_scores
         ranked = self._ranked(detector)
@@ -101,7 +101,7 @@ class Detection:
         return {(int(l), int(h)) for (l, h) in heads}
 
     def non_retrieval_heads(self, detector: str = "argmax") -> list[tuple[int, int]]:
-        """All (layer, head) NOT in the retrieval set — the random-control pool
+        """All (layer, head) NOT in the retrieval set - the random-control pool
         (§4.4)."""
         retr = self.retrieval_head_set(detector)
         return [
@@ -120,7 +120,7 @@ def load_detection(detection_dir: str | Path, panel_key: str, seed: int) -> Dete
     p = artifact_path(detection_dir, panel_key, seed)
     if not p.exists():
         raise DetectionError(
-            f"Detection artifact not found: {p}. Part 3 consumes the Part-2 "
+            f"Detection artifact not found: {p}. this repo consumes the prior detector "
             "profile artifact and never re-detects (§6)."
         )
     with open(p, encoding="utf-8") as f:

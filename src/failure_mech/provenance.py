@@ -7,7 +7,7 @@ byte-hashes of every config that fed it, the model key + pinned weight SHA, the
 seed(s), and an ISO-8601 UTC timestamp. See README "PROVENANCE" for the audit
 chain.
 
-No interpretation, no analysis — just faithful recording of what produced a
+No interpretation, no analysis - just faithful recording of what produced a
 number.
 """
 
@@ -40,7 +40,7 @@ def code_commit(repo_root: str | Path | None = None) -> dict[str, Any]:
     """Return the current code commit + dirty flag for ``repo_root``.
 
     ``repo_root`` defaults to the repository containing this file. A missing git
-    or a non-repo yields ``{"commit": None, ...}`` rather than raising — the
+    or a non-repo yields ``{"commit": None, ...}`` rather than raising - the
     provenance block still records that the commit was unavailable (which is
     itself audit information), and callers that require a clean commit assert on
     it explicitly.

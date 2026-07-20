@@ -9,7 +9,7 @@ residual) and is a TOTAL partition: every point lands in exactly one bucket
 (§10).
 
 The predicates' SEMANTICS are fixed here and documented in README; every NUMBER
-comes from ``preregistration.yaml`` ``signature_rules`` (§1.2) — this module
+comes from ``preregistration.yaml`` ``signature_rules`` (§1.2) - this module
 defaults nothing. A missing threshold raises ``PreregError`` naming it. No
 interpretation of the resulting labels happens anywhere (§12).
 
@@ -75,7 +75,7 @@ def _req(rule: dict, key: str, ctx: str):
 def _pred_m1(mass: MassPoint, ref: Reference, rule: dict) -> bool:
     """Silence: needle_mass at/below a floor. Floor = ref[reference]*factor, and
     additionally the absolute_floor if provided (silence if below EITHER is
-    configured — the researcher sets whichever they pre-registered)."""
+    configured - the researcher sets whichever they pre-registered)."""
     reference = _req(rule, "reference", "m1_silence")
     factor = float(_req(rule, "factor", "m1_silence"))
     floor = ref.stat(reference) * factor

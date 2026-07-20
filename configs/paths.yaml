@@ -1,8 +1,8 @@
 # ===========================================================================
 # External-repo and artifact locations (config-driven; ground rule §1.1).
 #
-# Part 3 REUSES the Part-1 `src/` and Part-2 `rhp/` code and the Part-2 pinned
-# model registry + detection artifacts. Nothing here is edited by Part 3; it is
+# This study REUSES the shared `src/` and `rhp/` code and the registry pinned
+# model registry + detection artifacts. Nothing here is edited by this study; it is
 # imported only (§0, §12). Every path may be overridden by an environment
 # variable so the same configs run unchanged on Colab and locally.
 #
@@ -13,20 +13,20 @@
 # ===========================================================================
 
 part1_repo:
-  # "Does RoPE Prevent or Degrade Retrieval Heads?" — provides src/ (model_loader,
+  # "Does RoPE Prevent or Degrade Retrieval Heads?" - provides src/ (model_loader,
   # activation_patching, niah_evaluator, stats_utils).
   env: "RHP_PART1_REPO"
   dirname: "Does-RoPE-Prevent-or-Degrade-Retrieval-Heads-A-Mechanistic-Analysis-Across-Model-Families"
   path: "../Does-RoPE-Prevent-or-Degrade-Retrieval-Heads-A-Mechanistic-Analysis-Across-Model-Families"
 
 part2_repo:
-  # retrieval-head-profile — provides the rhp package, configs/panel.yaml (pinned
+  # retrieval-head-profile - provides the rhp package, configs/panel.yaml (pinned
   # SHAs) and the detection artifacts under datas/results/profile/.
   env: "RHP_PART2_REPO"
   dirname: "retrieval-head-profile"
   path: "../rope-dimensions+/retrieval-head-profile"
 
-# The pinned model registry (Part-2). Part 3 never edits it; it reads the pinned
+# The pinned model registry. This study never edits it; it reads the pinned
 # commit SHAs and rope_theta from here (§1.3).
 panel_yaml:
   env: "RHP_PANEL_YAML"
@@ -40,14 +40,14 @@ detection_artifacts:
   relpath: "datas/results/profile"
   seed: 42                      # which detection seed's artifact to consume
 
-# Where Part 3 writes everything (§1.6, §1.8).
+# Where this study writes everything (§1.6, §1.8).
 output:
   results_dir: "./results"
   checkpoints_dir: "./results/checkpoints"
   donor_store_dir: "./results/donors"
 
-# Map task-spec model keys (§2) -> Part-2 panel.yaml keys. Each resolves to a
-# PINNED commit SHA in panel.yaml, and each already has a Part-2 detection
+# Map task-spec model keys (§2) -> the registry panel.yaml keys. Each resolves to a
+# PINNED commit SHA in panel.yaml, and each already has a detection
 # artifact (datas/results/profile/<panel_key>_seed42.json).
 #
 # The panel was expanded from the original 4 to a balanced 7 instruct models

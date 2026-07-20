@@ -1,12 +1,12 @@
 """
-E1 — breaking-surface mapping (task §5).
+E1 - breaking-surface mapping (task §5).
 
 Sweeps the (context, needle-position, distractor count x similarity) grid, grades
 greedy generations, and identifies BREAKING cells (accuracy inside the pre-
 registered band) that E2/E3 then dissect. Two-stage: a cheap stage-1 pass over
 every cell, then a stage-2 top-up of only the breaking cells.
 
-Nothing here is interpreted (§12) — it measures accuracy and behavioral-grade
+Nothing here is interpreted (§12) - it measures accuracy and behavioral-grade
 counts per cell, with a Wilson CI, and records which cells break.
 
 Usage:
@@ -87,7 +87,7 @@ def _generate_and_grade(model, tokenizer, factory, cell, n_samples, seed, decodi
     """Greedy generation (token-budgeted batches, no hooks) + grading.
 
     Uses each probe's CANONICAL ``input_ids`` (built once by the factory, chat
-    template + special tokens already applied) rather than re-tokenising text —
+    template + special tokens already applied) rather than re-tokenising text -
     so E1 and the E2/E3 single-sequence paths tokenise identically (§4.1, §1.4).
     """
     probes = [factory.build(cell, i, seed) for i in range(start_idx, start_idx + n_samples)]
@@ -284,7 +284,7 @@ def _select_breaking(surface, band, fb) -> tuple[set, bool]:
 
 def _dry_run(model_key, cells, grid_cfg, prereg, stage1_n, stage2_n, band):
     lo, hi = _band_bounds(band)
-    print(f"\n=== E1 DRY RUN — model={model_key} ===")
+    print(f"\n=== E1 DRY RUN - model={model_key} ===")
     print(f"cells: {len(cells)}  (context x position x [distractor count x similarity])")
     print(f"stage-1 samples/cell: {stage1_n}   stage-2 top-up (breaking): {stage2_n}")
     print(f"breaking band (accuracy): [{lo}, {hi}]  (from preregistration.yaml)")

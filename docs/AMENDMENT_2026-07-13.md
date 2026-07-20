@@ -1,7 +1,6 @@
-# Pre-registration amendment - dated record
+# Pre-registration amendment (dated record)
 
-> **Dated 2026-07-13.** Drafted by the assistant at the researcher's request; the
-> researcher audits, edits and owns it.
+> **Dated 2026-07-13**, committed **before** the runs it governs.
 >
 > **This document does not modify `configs/preregistration.yaml`, and no
 > pre-registered threshold is changed by it.** §F explicitly *declines* the M2

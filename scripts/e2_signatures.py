@@ -1,5 +1,5 @@
 """
-E2 — mechanistic signatures of failure (task §6).
+E2 - mechanistic signatures of failure (task §6).
 
 Within BREAKING cells only, forms matched success/failure pairs (identical token
 skeleton), captures each retrieval head's attention masses at the answer step,
@@ -164,7 +164,7 @@ def main(argv=None):
         cell = _cellspec_from_axes(rec["axes"], rec)
         # 0-distractor breaking cells ARE included: M2 (capture) simply never
         # fires (distractor_mass = 0), but M1/correct_attend/residual still
-        # classify from needle mass — the cleanest silence-vs-downstream signal.
+        # classify from needle mass - the cleanest silence-vs-downstream signal.
         n = int(rec["n_total"])
 
         # Grading pass (batched, no hooks): identify success/failure per sample.

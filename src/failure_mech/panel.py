@@ -1,16 +1,16 @@
 """
 Pinned model loading + panel access (task §1.3, §2, §3).
 
-Reuses the Part-2 pinned registry (``configs/panel.yaml`` in retrieval-head-
-profile) and puts the Part-1 ``src`` and Part-2 ``rhp`` packages on ``sys.path``
-so their proven code is importable (never edited — §0, §12). Paths come from
+Reuses the prior detector pinned registry (``configs/panel.yaml`` in retrieval-head-
+profile) and puts the prior library ``src`` and the prior detector ``rhp`` packages on ``sys.path``
+so their proven code is importable (never edited - §0, §12). Paths come from
 ``configs/paths.yaml`` with env-var overrides so the same configs run on Colab
 and locally.
 
 Loading is deterministic and PINNED: the weight commit SHA is read from
 panel.yaml and asserted to be a real 40-hex commit (``revision="main"`` is a bug,
 §1.3). Weights load in bf16 (§1.10) with an explicit attention backend chosen
-per experiment (§1.5). The inherited Part-1 loader only does fp16/8-bit, so this
+per experiment (§1.5). The inherited the prior library loader only does fp16/8-bit, so this
 module loads directly against the same pinned cfg rather than through it, and
 documents that choice.
 
@@ -37,7 +37,7 @@ class PanelError(RuntimeError):
 
 
 # ---------------------------------------------------------------------------
-# Path resolution (Part-1 / Part-2 repos, panel.yaml, detection artifacts)
+# Path resolution (the prior library / the prior detector repos, panel.yaml, detection artifacts)
 # ---------------------------------------------------------------------------
 
 def _repo_root() -> Path:
@@ -101,11 +101,11 @@ def resolve_part2_repo(paths_cfg: dict) -> Path:
 def ensure_reuse_on_path(paths_cfg: dict) -> tuple[Path | None, Path]:
     """Put the reuse repos on ``sys.path`` and return ``(part1, part2)``.
 
-    Part-2 is REQUIRED — it supplies ``configs/panel.yaml`` (pinned SHAs) and the
-    detection artifacts, both of which Part-3 reads. Part-1 is OPTIONAL: Part-3
-    reads panel.yaml and the artifacts as files/JSON and does NOT import Part-1
-    ``src`` code, so a missing Part-1 is a warning, not a failure (it stays
-    available for anyone who wants to cross-check with Part-1 utilities).
+    the prior detector is REQUIRED - it supplies ``configs/panel.yaml`` (pinned SHAs) and the
+    detection artifacts, both of which this repo reads. the prior library is OPTIONAL: this repo
+    reads panel.yaml and the artifacts as files/JSON and does NOT import the prior library
+    ``src`` code, so a missing the prior library is a warning, not a failure (it stays
+    available for anyone who wants to cross-check with the prior library utilities).
     """
     import logging
     part2 = resolve_part2_repo(paths_cfg)          # required
@@ -115,7 +115,7 @@ def ensure_reuse_on_path(paths_cfg: dict) -> tuple[Path | None, Path]:
         part1 = resolve_part1_repo(paths_cfg)
     except PanelError:
         logging.getLogger(__name__).info(
-            "Part-1 repo not found; continuing (Part-3 does not import it).")
+            "the prior library repo not found; continuing (this repo does not import it).")
         return None, part2
     os.environ.setdefault("RHP_PART1_REPO", str(part1))
     if str(part1) not in sys.path:
@@ -262,7 +262,7 @@ def load_model(
 ) -> tuple[Any, Any, dict]:
     """Load (model, tokenizer, resolved_cfg) at the PINNED revision in bf16.
 
-    GEMMA-2 BACKEND: transformers does NOT auto-promote Gemma-2 to eager — under
+    GEMMA-2 BACKEND: transformers does NOT auto-promote Gemma-2 to eager - under
     sdpa it SILENTLY DROPS attention-logit softcapping (a one-time warning), so
     generation logits would be subtly wrong. Softcapping is part of the real
     Gemma-2, so we force ``eager`` for the gemma family (correct softcap; needs

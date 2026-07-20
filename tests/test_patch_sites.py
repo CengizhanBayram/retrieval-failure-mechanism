@@ -2,13 +2,13 @@
 
 Two invariants the whole causal method rests on, per site:
   * self-patch (recipient <- its OWN activation) is a token-identical no-op;
-  * a FOREIGN donor actually changes the target tensor (the never-op detector —
+  * a FOREIGN donor actually changes the target tensor (the never-op detector -
     what self-patch cannot catch, because for self-patch 'no change' is correct).
 
 site='v' is a KV-CACHE swap at the CONTEXT span positions (retrieval reads the
 value vectors there, not at the answer step), so its tests pass explicit
 positions. If a hook were on the wrong tensor, the wrong positions, or the GQA map
-were wrong, one of these two invariants would break — the same guards the E3
+were wrong, one of these two invariants would break - the same guards the E3
 positive control uses at scale.
 """
 

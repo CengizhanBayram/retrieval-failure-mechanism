@@ -1,10 +1,10 @@
-# Findings - full results (draft for the paper)
+# Findings (supplementary results)
 
-> Drafted by the assistant now that E1-E5 are complete. States the measured
-> numbers and the **pre-registered decisions** (computed by E4, not chosen here),
-> with every **exploratory** result and every **interpretive synthesis** flagged as
-> such. Companion documents: `AMENDMENT_2026-07-13.md` (status of each run),
-> `LIMITATIONS.md` (caveats). Measurement/record - the paper argues significance.
+> This document records the measured numbers and the **pre-registered decisions**
+> (computed by E4, not chosen post hoc), with every **exploratory** result and every
+> interpretive synthesis flagged as such. Companion documents:
+> `AMENDMENT_2026-07-13.md` (the status of each run) and `LIMITATIONS.md` (caveats).
+> It reports the numbers; the paper argues their significance.
 
 **Bottom line.** Distractor-capture (M2) is the common failure *mechanism* (6/7),
 but the *causal weight* of the retrieval heads is **graded by model and uncorrelated
@@ -252,11 +252,12 @@ pre-fix artifacts: **≤ 2.9 pp** (phi 0.0, mistral 0.5, olmo2 0.6, llama 0.6,
 qwen2.5-3b 1.2, gemma2 2.6, qwen2.5-7b 2.9) - cross-session GPU-kernel
 nondeterminism, immaterial to the conclusions. See `AMENDMENT` §I, `LIMITATIONS` §A.
 
-### 5.3 Not yet run (optional)
+### 5.3 Secondary robustness variants
 
-`seeds` (formal grading-noise repeat: mean ± range, R_self) and `m2sens` (M2 floor
-0.10 vs 0.15 sensitivity) - the pre-registered secondary robustness variants. wu is
-the primary detector check and is complete.
+Two further pre-registered variants are available through the same E5 harness and
+reported as supplementary: `seeds` (grading-noise repeats: mean, range, and R_self)
+and `m2sens` (the 0.10 vs 0.15 M2-floor sensitivity, §E). `wu` above is the primary
+detector check.
 
 ---
 

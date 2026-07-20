@@ -26,14 +26,14 @@ from failure_mech.probes import CellSpec  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
-# Artifact freshness — the "resume skipped a stale run" trap
+# Artifact freshness - the "resume skipped a stale run" trap
 # ---------------------------------------------------------------------------
 
 def artifact_is_current(path: str | Path) -> bool:
     """True iff ``path`` exists AND the config hashes recorded in its provenance
     still match the config files on disk.
 
-    Resume logic must never ask "does an output file exist?" — after any earlier
+    Resume logic must never ask "does an output file exist?" - after any earlier
     campaign, an output file exists for EVERY model, so that question answers
     "yes" for stale results and the resume silently skips work it never did. This
     bit twice: notebook 09 skipped the whole panel (every model already had an
@@ -120,7 +120,7 @@ def load_paths_cfg() -> dict:
 
 def time_guard(start: float, model_times: list[float], first_est_h: float,
                hard_cap_h: float = 23.0) -> tuple[bool, float, float]:
-    """Adaptive 24h-safe guard (mirrors Part-2). Returns (ok_to_start_next,
+    """Adaptive 24h-safe guard (mirrors the prior detector). Returns (ok_to_start_next,
     elapsed_h, est_next_h): won't green-light a model that can't finish under the
     hard cap. ``model_times`` are per-model wall-clock hours already recorded."""
     import time
@@ -171,7 +171,7 @@ class CheckpointManager:
         self.root.mkdir(parents=True, exist_ok=True)
         self.manifest_path = self.root / "manifest.json"
         self.manifest = self._load_manifest()
-        # A checkpoint is only reused if its fingerprint matches — so changing the
+        # A checkpoint is only reused if its fingerprint matches - so changing the
         # probe config (e.g. turning on the chat template), the pinned model SHA
         # or the seed INVALIDATES stale cells instead of silently mixing them
         # with new ones (§1.7, §1.8).
@@ -241,13 +241,13 @@ def _json_default(o):
 
 def probe_fingerprint(config_paths: list, model_sha, seed, extra_sources=()) -> str:
     """Fingerprint of everything that determines a cell's per-sample results: the
-    config bytes (grid/decoding — templates, vocab, chat-template flag, decoding
+    config bytes (grid/decoding - templates, vocab, chat-template flag, decoding
     spec), the pinned model SHA, the seed, AND the probe-generation source
     (probes.py, spans.py). Including the code means a change to e.g. the
     single-token filter invalidates stale checkpoints instead of silently mixing
     old- and new-filter probes.
 
-    ``extra_sources`` adds more source files to the hash — E3 passes patching.py for
+    ``extra_sources`` adds more source files to the hash - E3 passes patching.py for
     a non-z_h --site run, so changing the patcher (e.g. the v cache-swap fix)
     invalidates the OLD site checkpoints, while the z_h fingerprint (which does not
     include patching.py) is unchanged and its completed sweep is not recomputed."""

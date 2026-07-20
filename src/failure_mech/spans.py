@@ -82,7 +82,7 @@ def locate_value_span(
         the value never absorbs the period.
       * ``require_leading_space_merge`` (LEADING): the value's first token
         begins exactly one char before (the single preceding space is merged
-        into it). This is the crux of alignment — if instead the tokenizer
+        into it). This is the crux of alignment - if instead the tokenizer
         emits a STANDALONE space token before some values but not others, those
         values gain a phantom +1 token that shifts every downstream position.
         Requiring the merged form makes the value footprint identical across a

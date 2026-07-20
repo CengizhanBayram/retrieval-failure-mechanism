@@ -4,7 +4,7 @@ Statistics primitives (task §4.6).
 Paired sign-flip permutation, Benjamini-Hochberg, Cliff's delta, bootstrap CI,
 plus the Wilson interval E1 reports for cell accuracy. Statistical parameters
 (alpha, effect-size choice, CI level, permutation/bootstrap counts) are passed
-in EXPLICITLY by the caller from prereg ``statistics`` / ``causal_criteria`` —
+in EXPLICITLY by the caller from prereg ``statistics`` / ``causal_criteria`` -
 this module never reaches into prereg and has no hidden thresholds (§4.6).
 
 Determinism (§1.7): every Monte-Carlo routine takes an explicit ``seed``; the

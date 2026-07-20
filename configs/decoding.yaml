@@ -19,11 +19,11 @@ dtype: "bfloat16"
 #   e1: fastest available exact backend, no attention materialised.
 #   capture: the manual rows are RECOMPUTED (hook pre-RoPE q at q_proj, apply the
 #            model's own rotary with the answer step's position_ids, read K from
-#            the KV cache), so sdpa is fine for most models — we do NOT hook
+#            the KV cache), so sdpa is fine for most models - we do NOT hook
 #            inside the sdpa call. GEMMA-2 IS DIFFERENT: HF forces Gemma-2 to
 #            eager because of attention-logit softcapping, and the manual row
 #            must apply softcapping + query_pre_attn_scalar (read from config).
-#            So Gemma-2 capture runs in EAGER by design — this is the expected
+#            So Gemma-2 capture runs in EAGER by design - this is the expected
 #            path, documented in README, not a silent fallback (§1.9).
 attn_implementation:
   e1: "sdpa"
@@ -39,7 +39,7 @@ batch:
   # Tuned for a ~22 GB GPU (L4/A10) with an 8-9B model in bf16 (~16-18 GB
   # weights leave little headroom). generate_plain_batch is GPU-ADAPTIVE: on OOM
   # it halves the batch and retries down to a single sample, so this is a
-  # starting point, not a hard requirement — raise it on an A100/H100.
+  # starting point, not a hard requirement - raise it on an A100/H100.
   max_tokens_per_batch: 12288   # sum of prompt lengths per E1 generation batch
   max_samples_per_batch: 8      # hard cap regardless of token budget
   min_samples_per_batch: 1      # a single long sample is always allowed

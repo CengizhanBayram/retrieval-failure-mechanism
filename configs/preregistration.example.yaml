@@ -1,20 +1,18 @@
 # ===========================================================================
-# PROPOSED pre-registration — NOT the live file.
+# EXAMPLE pre-registration - NOT the live file.
 #
 # The codebase reads configs/preregistration.yaml (the gate). This *.example*
-# file is a proposal drafted at the researcher's request on 2026-07-05, holding
-# the values discussed. It does NOT satisfy the gate by itself — you activate it
-# by an explicit act (copy to the canonical name), which is your authoring of
-# the pre-registration:
+# file shows the schema shape and a set of values; it does NOT satisfy the gate
+# by itself. It is activated by an explicit act (copying it to the canonical
+# name), which constitutes authoring the pre-registration:
 #
 #     cp configs/preregistration.example.yaml configs/preregistration.yaml
 #     # review it, then:  git add configs/preregistration.yaml && git commit -m "pre-registration"
 #
 # REVIEW BEFORE ACTIVATING. In particular the two attention-mass thresholds
 # (m1_silence.absolute_floor, m2_capture.*) should be calibrated to pilot data
-# if you have any — everything else is standard. Pre-registration means these
-# are fixed BEFORE the confirmatory run; no results exist yet, so you are still
-# in time.
+# if available; everything else is standard. Pre-registration means these are
+# fixed BEFORE the confirmatory run, before any results exist.
 # ===========================================================================
 
 sampling:

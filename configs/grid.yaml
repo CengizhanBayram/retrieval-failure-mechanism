@@ -1,7 +1,7 @@
 # ===========================================================================
 # E1 grid + procedural probe resources (task §4.1, §5).
 #
-# NOTHING here is a decision threshold — those live in the researcher-authored
+# NOTHING here is a decision threshold - those live in the researcher-authored
 # preregistration.yaml. This file is the STIMULUS design: the cell grid and the
 # templates/vocab the probe generator draws from. All probe text is generated
 # from these; no external corpora are ever used (§12).

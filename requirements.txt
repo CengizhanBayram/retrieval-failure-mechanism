@@ -1,12 +1,12 @@
 # ===========================================================================
-# retrieval-failure-mechanism (Part 3) — pinned runtime stack.
+# retrieval-failure-mechanism - pinned runtime stack.
 #
-# These pins MIRROR the stack recorded in the Part-1/Part-2 result artifacts'
+# These pins MIRROR the stack recorded in the prior repos result artifacts'
 # `environment` block (torch 2.11.0+cu128, transformers 4.47.0, numpy 2.0.2,
 # scipy 1.16.3), so a value patched/captured here is bit-compatible with the
 # detection artifacts it consumes. The GPU experiments run on Colab (A100/L4);
 # reproduce that stack there. Torch is intentionally left to the Colab/CUDA
-# wheel index (install torch separately, matched to the CUDA runtime) — see
+# wheel index (install torch separately, matched to the CUDA runtime) - see
 # README "Reproduction".
 #
 # CPU-only local dev (tests that need no model) works with any recent torch;

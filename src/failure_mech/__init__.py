@@ -1,10 +1,10 @@
 """
-retrieval-failure-mechanism (Part 3).
+retrieval-failure-mechanism.
 
 When a model FAILS at long-context retrieval, what is the mechanistic signature
 at the retrieval-head level, and is it causal? This package builds the
-experiment suite on top of Part-1 (``src/``, the RoPE/retrieval-head paper) and
-Part-2 (``rhp/``, the retrieval-head-profile paper). Those two are imported
+experiment suite on top of the prior library (``src/``, the RoPE/retrieval-head paper) and
+the prior detector (``rhp/``, the retrieval-head-profile paper). Those two are imported
 only, never edited (task §0, §12).
 
 Measurement only: no module in this package interprets a result (§12). Every

@@ -8,7 +8,7 @@ NEVER pass ``output_attentions=True`` and NEVER materialise an LxL matrix
 query and the cached post-RoPE keys.
 
 Two correctness rules the researcher flagged (both arbitrated by the eager-
-reference test, §10 — trust no number until it passes on all four models):
+reference test, §10 - trust no number until it passes on all four models):
 
 1.  You cannot READ post-RoPE q under sdpa (RoPE is applied inside the attention
     forward). We hook ``q_proj`` for the PRE-RoPE q and RECOMPUTE the rotation
@@ -64,7 +64,7 @@ def _rope_cos_sin(model, position_ids):
     if rot is None:
         raise AttributeError(
             "Could not locate the model's rotary module and no position_embeddings "
-            "were captured from the decoder layers — cannot recompute post-RoPE q.")
+            "were captured from the decoder layers - cannot recompute post-RoPE q.")
     with torch.no_grad():
         cos, sin = rot(dummy, position_ids.to(device))
     return cos, sin
@@ -134,7 +134,7 @@ def sliding_window_size(model) -> int | None:
     Generalizes beyond Gemma-2: any model with a ``sliding_window`` config uses
     it, unless gated off (Qwen2.5 ``use_sliding_window: false``). For the current
     panel only Gemma-2's 4096 window is below the studied contexts; Phi/Qwen
-    windows exceed 16k, so this is a no-op there — but the check is now correct
+    windows exceed 16k, so this is a no-op there - but the check is now correct
     for any windowed model rather than Gemma-only."""
     cfg = model.config
     sw = getattr(cfg, "sliding_window", None)
@@ -206,7 +206,7 @@ class _QProjTap:
 
             self._handles.append(proj.register_forward_hook(make(li)))
 
-            # Capture the (cos, sin) the DECODER LAYER receives — robust across
+            # Capture the (cos, sin) the DECODER LAYER receives - robust across
             # architectures/versions (Gemma-2 has no model.rotary_emb here).
             dec_layer = self.model.model.layers[li]
 
@@ -374,7 +374,7 @@ def _layer_keys(past, layer_idx):
 
 def _is_window_limited(model, layer_idx, needle_span, cur_position) -> bool:
     """True if this is a local (sliding-window) layer and the needle lies OUTSIDE
-    the window at the answer step — its mass is truncated, not truly silent (§8).
+    the window at the answer step - its mass is truncated, not truly silent (§8).
     Generalized beyond Gemma-2 (§7 fix)."""
     if not layer_uses_sliding(model, layer_idx):
         return False
@@ -384,7 +384,7 @@ def _is_window_limited(model, layer_idx, needle_span, cur_position) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Eager reference (TESTS ONLY, §10) — the arbiter of the manual row
+# Eager reference (TESTS ONLY, §10) - the arbiter of the manual row
 # ---------------------------------------------------------------------------
 
 def eager_reference_row(model, input_ids: list[int], layer: int, head: int) -> np.ndarray:

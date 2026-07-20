@@ -1,6 +1,6 @@
 """
 Probe construction (task §4.1). All text is procedurally generated from
-``configs/grid.yaml`` — no external corpora (§12).
+``configs/grid.yaml`` - no external corpora (§12).
 
 Anatomy: a constant preamble, filler padding, one NEEDLE sentence carrying the
 key->value fact, ``n_distractors`` DISTRACTOR sentences (shell_same or
@@ -313,7 +313,7 @@ class ProbeFactory:
                 g = min(max(g, 0), n_filler)
                 # Prefer a free gap, but there are only n_filler+1 gaps; if fewer
                 # gaps than items (tiny context / many distractors) bound the
-                # search and allow a stack (assemble handles multiple per gap) —
+                # search and allow a stack (assemble handles multiple per gap) -
                 # never spin forever. Deterministic, so the skeleton stays fixed.
                 tries = 0
                 while (g == needle_gap or g in gaps) and tries <= n_filler:
@@ -442,6 +442,6 @@ class _Layout:
 
 def build_probe(tokenizer, grid_cfg: dict, model_key: str, cell: CellSpec,
                 sample_idx: int, seed: int) -> Probe:
-    """One-shot probe build (constructs a fresh factory — for interactive use;
+    """One-shot probe build (constructs a fresh factory - for interactive use;
     scripts reuse a single :class:`ProbeFactory` per model for the cache)."""
     return ProbeFactory(tokenizer, grid_cfg, model_key).build(cell, sample_idx, seed)

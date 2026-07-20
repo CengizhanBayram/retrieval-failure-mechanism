@@ -2,8 +2,8 @@
 # PRE-REGISTRATION (live gate file).
 #
 # Adopted by the researcher on 2026-07-05 from the proposed template
-# (configs/preregistration.example.yaml), before any confirmatory run — no
-# results exist yet. These thresholds are fixed for the E1–E5 suite; changing
+# (configs/preregistration.example.yaml), before any confirmatory run - no
+# results exist yet. These thresholds are fixed for the E1-E5 suite; changing
 # them after seeing results breaks the pre-registration. The two attention-mass
 # thresholds (m1_silence.absolute_floor, m2_capture.*) were reviewed and may be
 # re-calibrated to pilot data before the run if available.

@@ -2,7 +2,7 @@
 Shared test fixtures.
 
 Puts ``src/`` on the path, provides a VALID pre-registration dict (a test
-fixture only — NEVER the real configs/preregistration.yaml, §1.2), and cached
+fixture only - NEVER the real configs/preregistration.yaml, §1.2), and cached
 loaders for tiny public models used by the mechanism tests (skipped when a
 download is unavailable so the CPU-only suite still runs offline).
 """

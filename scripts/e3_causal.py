@@ -1,5 +1,5 @@
 """
-E3 — bidirectional causal patching (task §7).
+E3 - bidirectional causal patching (task §7).
 
 Over the matched pairs from E2's breaking cells, for each head-set size k:
 patch z_h and re-grade. Five mandatory runs per pair (§4.4): repair
@@ -41,7 +41,7 @@ EXP = "e3"
 
 
 class SelfPatchError(RuntimeError):
-    """Self-patch produced a non-identical generation — abort (§4.4)."""
+    """Self-patch produced a non-identical generation - abort (§4.4)."""
 
 
 def _cellspec(ax: dict, rec: dict | None = None) -> CellSpec:
@@ -118,7 +118,7 @@ def _control_heads(det, treatment_heads, site, seed, model):
       v   : as many random (layer, kv) units NOT in the treatment KV set, mapped
             back to a representative query head kv*group.
       mlp : as many random OTHER layers as the treatment spans (capped by how many
-            layers remain — the cap is recorded), one representative head each.
+            layers remain - the cap is recorded), one representative head each.
     """
     rng = random.Random(seed)
     n_q, n_kv = P.head_counts(model)
@@ -143,7 +143,7 @@ def _self_patch_check(model, tokenizer, cell_pairs, heads, decoding_cfg, patch_m
                       model_key, site="z_h"):
     """Run the self-patch no-op ONCE per model (§4.4): patch a recipient with its
     OWN activation at ``site`` and require a token-identical generation. Independent
-    of k and of the repair/break loop. ABORT on mismatch — for a non-z_h site this
+    of k and of the repair/break loop. ABORT on mismatch - for a non-z_h site this
     is the primary correctness guard that the new hook is on the right tensor."""
     for pairs in cell_pairs.values():
         if not pairs:
@@ -235,14 +235,14 @@ def main(argv=None):
     stat_ci = float(PR.get(prereg, "statistics.ci"))
     # Merge the (config or --k-list) k values with any CLI --extra-k (exploratory,
     # per-model). The fingerprint hashes e3.yaml, NOT the CLI, so CLI k values do not
-    # invalidate the config-k checkpoints — they resume; only new k compute.
+    # invalidate the config-k checkpoints - they resume; only new k compute.
     base_k = args.k_list if args.k_list else e3_cfg["k_list"]
     k_list = sorted(set(base_k) | set(args.extra_k))
     patch_mode = e3_cfg.get("patch_mode", "first_step")
     ctrl_seed_base = int(e3_cfg["random_control_seed_base"])
     site = args.site
     # A non-z_h site is a different intervention, so it gets its OWN checkpoint dir
-    # and output file — it never touches the pre-registered z_h run.
+    # and output file - it never touches the pre-registered z_h run.
     exp_name = "e3" if site == "z_h" else f"e3_{args.tag}"
 
     C.set_global_seed(seed)
@@ -271,7 +271,7 @@ def main(argv=None):
         raise SystemExit(
             f"k={max_k} exceeds the {n_detected} detected argmax heads for "
             f"{args.model}. The full detected set is k={n_detected}; pass "
-            f"--extra-k {n_detected} (not more — top_k_heads refuses to pad).")
+            f"--extra-k {n_detected} (not more - top_k_heads refuses to pad).")
     heads_max = det.top_k_heads(max_k, detector="argmax")
     if args.extra_k:
         log.info("k_list = %s (config + exploratory --extra-k %s); full detected set "
@@ -296,7 +296,7 @@ def main(argv=None):
 
     # ---- Checkpoints: one per k, so a killed session loses at most one k ------
     # A non-z_h site's per-k result depends on the patcher, so its fingerprint
-    # includes patching.py — this invalidates the OLD (structurally-null) v
+    # includes patching.py - this invalidates the OLD (structurally-null) v
     # checkpoints while leaving the completed z_h sweep untouched.
     extra_src = [C.REPO_ROOT / "src/failure_mech/patching.py"] if site != "z_h" else []
     ckpt = C.CheckpointManager(
@@ -385,7 +385,7 @@ def main(argv=None):
 
     # ---- Flatten the pairs and precompute every random-control head set -------
     # The control seeds depend on (pair, k) exactly as before, so the head sets
-    # drawn are IDENTICAL to the previous implementation — this only computes them
+    # drawn are IDENTICAL to the previous implementation - this only computes them
     # up front instead of inside the loop.
     pairs_flat = [(h, si, sp, fi, fp)
                   for h in cells_used for (si, sp, fi, fp) in cell_pairs[h]]
@@ -403,14 +403,14 @@ def main(argv=None):
     # ---- Capture each probe's donor ONCE, at the UNION of every head set -------
     # z_h is the o_proj input slice for head h at the answer position; it does NOT
     # depend on which OTHER heads are being captured. So the donor for any head set
-    # is an exact slice of a capture taken over a superset — bitwise identical.
+    # is an exact slice of a capture taken over a superset - bitwise identical.
     # The old code re-captured per (pair, k), paying a full prompt forward each
     # time: 4 x len(k_list) captures per pair (20 at five k values) where 2 suffice.
     # This is a pure speedup, not a change of method.
     donors_sp: dict = {}
     donors_fp: dict = {}
     # If every k is already checkpointed the k loop only reloads from disk and never
-    # touches a donor, so re-capturing them (a full prompt forward per pair — ~1 h
+    # touches a donor, so re-capturing them (a full prompt forward per pair - ~1 h
     # for a model like phi) would be pure waste on a completed model.
     if all(ckpt.is_done(f"k{k}") for k in k_list):
         log.info("all %d k already checkpointed; skipping donor capture.", len(k_list))
@@ -444,7 +444,7 @@ def main(argv=None):
             continue
         if _budget_exhausted(t_start, args.max_hours):
             log.warning("time budget (%.1f h) reached before k=%d; stopping cleanly. "
-                        "Re-run to resume — finished k are checkpointed.",
+                        "Re-run to resume - finished k are checkpointed.",
                         args.max_hours, k)
             break
 
@@ -480,7 +480,7 @@ def main(argv=None):
             ind["ctrl_break"].append(int(base_sp and (not cb)))
 
             # no-patch rerun flip (base vs an independent rerun): detects GPU
-            # kernel nondeterminism — should be ~0.
+            # kernel nondeterminism - should be ~0.
             ind["nopatch_repair"].append(int((not base_fp) and b_fp["rerun"]))
             ind["nopatch_break"].append(int(base_sp and (not b_sp["rerun"])))
 

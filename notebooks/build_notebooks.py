@@ -1,14 +1,14 @@
 """
-Generate the Colab notebooks for retrieval-failure-mechanism (Part 3).
+Generate the Colab notebooks for retrieval-failure-mechanism.
 
 Run from anywhere:
     python notebooks/build_notebooks.py
 
-Mirrors the Part-2 notebook design (self-contained tasks, 24 h-safe via an
+Mirrors the prior detector notebook design (self-contained tasks, 24 h-safe via an
 adaptive guard, resume-safe to Google Drive, reuse the tested helpers rather
-than re-implementing). Each notebook clones THREE repos — Part-1 (inherited
-``src/``), Part-2 (``rhp/`` + pinned ``configs/panel.yaml`` + detection
-artifacts) and Part-3 (this repo) — wires the paths, and runs the experiment
+than re-implementing). Each notebook clones THREE repos - the prior library (inherited
+``src/``), the prior detector (``rhp/`` + pinned ``configs/panel.yaml`` + detection
+artifacts) and this repo - wires the paths, and runs the experiment
 scripts with ``RFM_RESULTS_DIR`` pointing at Drive.
 
 The pre-registration gate is honored: notebook 00 CHECKS for the researcher-
@@ -65,7 +65,7 @@ def notebook(cells: list[dict], gpu: bool = True) -> dict:
 # ---------------------------------------------------------------------------
 
 SETUP_GPU_DRIVE = code(r"""
-# Cell 0 — GPU check + Google Drive + results dir on Drive
+# Cell 0 - GPU check + Google Drive + results dir on Drive
 import subprocess, os
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'  # less fragmentation
 print(subprocess.check_output('nvidia-smi', shell=True).decode())
@@ -84,7 +84,7 @@ print('Results dir:', RESULTS_DIR)
 
 SETUP_PIP = code(r"""
 %%bash
-# Cell 1 — dependencies. Pin transformers to match the Part-1/Part-2 artifacts
+# Cell 1 - dependencies. Pin transformers to match the prior repos' artifacts
 # so a captured/patched value is bit-compatible with the detection artifacts.
 # NOTE: Colab often ships a newer transformers; the pin below downgrades it. If
 # the version check in the next cell shows != 4.47.0, RESTART THE RUNTIME and
@@ -96,10 +96,10 @@ echo 'Install complete.'
 """)
 
 SETUP_CLONE = code(r"""
-# Cell 2 — tokens + clone THREE repos
-#   Part 1: inherited src/ (model_loader, activation_patching, stats_utils).
-#   Part 2: rhp/, configs/panel.yaml (PINNED SHAs), detection artifacts.
-#   Part 3: this repo (failure_mech/, scripts/, configs/).
+# Cell 2 - tokens + clone THREE repos
+#   infra library: inherited src/ (model_loader, activation_patching, stats_utils).
+#   infra detector: rhp/, configs/panel.yaml (PINNED SHAs), detection artifacts.
+#   this repo (failure_mech/, scripts/, configs/).
 import os, subprocess
 
 GITHUB_TOKEN = ""          # ghp_...  (only for private repos)
@@ -132,7 +132,7 @@ for r in (PART1, PART2, PART3):
 """)
 
 SETUP_PATHS = code(r"""
-# Cell 3 — env wiring + HF login. Part-3 panel.py resolves the sibling repos from
+# Cell 3 - env wiring + HF login. this repo's panel.py resolves the sibling repos from
 # these env vars; RFM_RESULTS_DIR redirects all outputs to Drive.
 import os, sys, subprocess
 os.environ['RHP_PART1_REPO'] = '/content/rope-part1'
@@ -150,7 +150,7 @@ if os.environ.get('HF_TOKEN'):
         print('HF login skipped:', e)
 
 def run(argv):
-    '''Run a Part-3 script as a subprocess in the Part-3 dir, streaming output.'''
+    '''Run a this repo script as a subprocess in this repo dir, streaming output.'''
     env = dict(os.environ)
     p = subprocess.Popen([sys.executable] + argv, cwd=PART3, env=env,
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -169,9 +169,9 @@ print(f'transformers={transformers.__version__} torch={torch.__version__}',
 """)
 
 PREREG_GATE = code(r"""
-# Cell 4 — PRE-REGISTRATION GATE (task §1.2). This codebase NEVER creates or
+# Cell 4 - PRE-REGISTRATION GATE (task §1.2). This codebase NEVER creates or
 # defaults configs/preregistration.yaml. The researcher must author + commit it
-# to the Part-3 repo BEFORE any analysis. This cell only checks it and runs the
+# to this repo repo BEFORE any analysis. This cell only checks it and runs the
 # gate; a missing file or key fails loudly, naming what is missing.
 import sys
 sys.path.insert(0, '/content/rope-part3/src')
@@ -186,9 +186,9 @@ try:
           '/', PR.get(cfg, 'sampling.stage2_topup_n_breaking_cells'))
     print('  mode precedence:', PR.get(cfg, 'signature_rules.mode_precedence'))
 except PR.PreregError as e:
-    print('PREREG GATE FAILED — no analysis may run until this is fixed:\n')
+    print('PREREG GATE FAILED - no analysis may run until this is fixed:\n')
     print(e)
-    print('\nAuthor configs/preregistration.yaml in your Part-3 repo with these keys:')
+    print('\nAuthor configs/preregistration.yaml in your this repo repo with these keys:')
     for k in PR.REQUIRED_KEYS:
         print('  -', k)
     raise
@@ -196,8 +196,8 @@ except PR.PreregError as e:
 
 
 def setup_cells(extra_intro: str = "") -> list[dict]:
-    intro = ("### Setup — run cells 0–4 once per session\n"
-             "Mounts Drive, installs the pinned stack, clones Part-1/2/3, wires paths, "
+    intro = ("### Setup - run cells 0-4 once per session\n"
+             "Mounts Drive, installs the pinned stack, clones the prior library/2/3, wires paths, "
              "and runs the **pre-registration gate**. Edit the repo owners and paste "
              "your `HF_TOKEN` (gated Llama/Gemma) in Cell 2 before running.")
     if extra_intro:
@@ -210,7 +210,7 @@ MODELS = ["llama31_8b_instruct", "gemma2_9b_it", "mistral_7b_instruct",
           "qwen25_3b_instruct"]
 
 
-# Idempotent shell_share enable. Shared by notebooks 06 (E1+E2) and 07 (E3+E4) —
+# Idempotent shell_share enable. Shared by notebooks 06 (E1+E2) and 07 (E3+E4) -
 # BOTH need it because E3 rebuilds the probes from grid.yaml, and a fresh clone
 # without shell_share would produce different probes than E1/E2 used.
 SHELL_SHARE_CELL = code(r"""
@@ -224,7 +224,7 @@ if OLD in txt:                                            # OLD matches only the
 elif NEW in txt.replace('#', ''):                         # already uncommented
     print('shell_share already enabled.')
 else:
-    print('Could not find the grid.similarity line to patch — inspect configs/grid.yaml manually.')
+    print('Could not find the grid.similarity line to patch - inspect configs/grid.yaml manually.')
 # sanity: show the active line
 for ln in open(gp):
     s = ln.strip()
@@ -234,7 +234,7 @@ for ln in open(gp):
 
 
 # ---------------------------------------------------------------------------
-# 00 — setup + guardrails (the researcher's first-run gate)
+# 00 - setup + guardrails (the researcher's first-run gate)
 # ---------------------------------------------------------------------------
 
 def nb_00() -> dict:
@@ -243,11 +243,11 @@ def nb_00() -> dict:
         "Validates the skeleton BEFORE any experiment burns GPU time. Runs the CPU "
         "guardrail tests (pre-registration red-test, four-bucket partition, stats, "
         "grading, probe skeleton alignment) and then the **eager-reference capture "
-        "check on the seven PINNED models** — the sole arbiter of the manual "
+        "check on the seven PINNED models** - the sole arbiter of the manual "
         "attention row (recompute-RoPE + Gemma-2 softcap/query-scale + OLMo-2 "
         "QK-norm + Phi-3 fused-qkv). Trust no capture number until this passes.")]
     cells += setup_cells()
-    cells.append(md("## Guardrail tests (CPU) — prereg gate, stats, classify, grading, probes"))
+    cells.append(md("## Guardrail tests (CPU) - prereg gate, stats, classify, grading, probes"))
     cells.append(code(r"""
 # Runs the tests that need no GPU (tiny-model tests are skipped if offline).
 run(['-m', 'pytest', 'tests/test_prereg.py', 'tests/test_stats.py',
@@ -259,7 +259,7 @@ run(['-m', 'pytest', 'tests/test_prereg.py', 'tests/test_stats.py',
                     "softcap+query-scale+window, OLMo-2 QK-norm, Phi-3 fused-qkv+partial-rotary.\n\n"
                     "**Loaded in fp32** on purpose: this isolates *is the formula right?* from "
                     "bf16 rounding. bf16 has ~2⁻⁸ ≈ 4e-3 precision, so a bf16 model's own "
-                    "attention differs from an fp32 recompute by a few e-3 — that is NOT a bug "
+                    "attention differs from an fp32 recompute by a few e-3 - that is NOT a bug "
                     "and is far below the mass thresholds (m1 floor 0.02, m2 min 0.10). The "
                     "gate is: **fp32 max|manual−eager| < 1e-3 for every model.** The reported "
                     "bf16 delta is informational."))
@@ -335,7 +335,7 @@ C.write_json(f'{RESULTS_DIR}/gate_eager_reference.json',
              {'provenance': prov, 'n_pass': n_pass, 'n_models': len(gate), 'models': gate})
 print(f'\nwrote {RESULTS_DIR}/gate_eager_reference.json  ({n_pass}/{len(gate)} PASS)')
 if n_pass < len(gate):
-    print('*** GATE NOT CLEAN — do not trust capture numbers until every model passes. ***')
+    print('*** GATE NOT CLEAN - do not trust capture numbers until every model passes. ***')
 """ % {"models": json.dumps(MODELS)}))
     return notebook(cells)
 
@@ -346,7 +346,7 @@ if n_pass < len(gate):
 
 def _model_loop(title, subtitle, script_argv_tmpl, first_est_h, skip_check,
                 fresh_arg=None, overwrite_default=False, models=None) -> list[dict]:
-    """A resume-safe, 24 h-guarded model loop that shells out to a Part-3 script.
+    """A resume-safe, 24 h-guarded model loop that shells out to a this repo script.
     ``skip_check`` is a python expression (given ``key``, ``RESULTS_DIR``) that is
     True when the model's output already exists. ``OVERWRITE`` in the generated
     cell recomputes + overwrites ALL models (ignore existing outputs);
@@ -377,7 +377,7 @@ RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
 MODELS = %(models)s
 FRESH = %(fresh)s
 # A bare string here would be iterated character by character, and every "model"
-# would fail its lookup and be logged as a skipped variant — a loop that appears
+# would fail its lookup and be logged as a skipped variant - a loop that appears
 # to run fine while computing nothing. Fail immediately instead.
 if not isinstance(MODELS, (list, tuple)) or not all(isinstance(m, str) for m in MODELS):
     raise TypeError(f'MODELS must be a list of model keys, got {MODELS!r}')
@@ -411,7 +411,7 @@ for key in MODELS:
 
 def nb_e1() -> dict:
     cells = [md(
-        "# 01 · E1 — Breaking Surface (§5)\n"
+        "# 01 · E1 - Breaking Surface (§5)\n"
         "Sweeps the 140-cell grid per model (context x position x distractor "
         "config), grades greedy generations, and records the breaking cells. "
         "**Resume-safe**: E1 checkpoints every cell to Drive; a re-run skips "
@@ -431,7 +431,7 @@ def nb_e1() -> dict:
 
 def nb_e2() -> dict:
     cells = [md(
-        "# 02 · E2 — Mechanistic Signatures (§6)\n"
+        "# 02 · E2 - Mechanistic Signatures (§6)\n"
         "Within breaking cells, forms matched success/failure pairs (identical "
         "token skeleton), captures retrieval-head attention masses at the answer "
         "step, builds the success reference distribution, classifies failures into "
@@ -448,9 +448,9 @@ def nb_e2() -> dict:
 
 def nb_e3() -> dict:
     cells = [md(
-        "# 03 · E3 — Bidirectional Causal Patching (§7)\n"
+        "# 03 · E3 - Bidirectional Causal Patching (§7)\n"
         "Over E2's matched pairs, for each k in {1,5,10}: repair / break / random-"
-        "control / no-patch / self-patch. Self-patch MUST be token-identical — the "
+        "control / no-patch / self-patch. Self-patch MUST be token-identical - the "
         "script ABORTS if not (§4.4). All four repair/break outcomes are reported "
         "neutrally. Needs E2 outputs.")]
     cells += setup_cells()
@@ -472,11 +472,11 @@ def nb_e4_e5() -> dict:
         "head list, at the sensitivity k, over seed repeats (mean +/- range), and "
         "with answer_steps=3. Needs E2/E3 outputs.")]
     cells += setup_cells()
-    cells.append(md("## E4 — family comparison table + causal decision"))
+    cells.append(md("## E4 - family comparison table + causal decision"))
     cells.append(code(
         "run(['scripts/e4_families.py', '--models'] + %s)" % json.dumps(MODELS)))
     cells += _model_loop(
-        "E5 — robustness per model",
+        "E5 - robustness per model",
         "Each variant is a clean subprocess with the pinned model.",
         "['scripts/e5_robustness.py', '--model', key]",
         first_est_h=8.0,
@@ -494,7 +494,7 @@ print(json.dumps(e4['causal_decision'], indent=2)[:2000])
 
 
 # ---------------------------------------------------------------------------
-# 05 — analyze the models that already broke (reuses existing E1 on Drive)
+# 05 - analyze the models that already broke (reuses existing E1 on Drive)
 # ---------------------------------------------------------------------------
 
 def nb_05_analyze_breaking() -> dict:
@@ -521,19 +521,19 @@ print('\n-> E2/E3 below run only for models MISSING their output. '
       'Delete an e2/e3 json to force a re-run.')
 """))
     cells += _model_loop(
-        "E2 — signatures for the missing models",
+        "E2 - signatures for the missing models",
         "Runs only where `e2_signatures_{model}.json` is absent (OLMo-2, Gemma-2, "
         "Mistral, Phi from your run). Near-ceiling models just produce 0 cells fast.",
         "['scripts/e2_signatures.py', '--model', key]",
         first_est_h=4.0,
         skip_check="C.artifact_is_current(f'{RESULTS_DIR}/e2_signatures_{key}.json')")
     cells += _model_loop(
-        "E3 — causal patching for the missing models",
+        "E3 - causal patching for the missing models",
         "Runs only where `e3_causal_{model}.json` is absent.",
         "['scripts/e3_causal.py', '--model', key]",
         first_est_h=6.0,
         skip_check="C.artifact_is_current(f'{RESULTS_DIR}/e3_causal_{key}.json')")
-    cells.append(md("## E4 — refresh the family table + causal decision"))
+    cells.append(md("## E4 - refresh the family table + causal decision"))
     cells.append(code("run(['scripts/e4_families.py', '--models'] + %s)" % json.dumps(MODELS)))
     cells.append(md("## Read the headline signal"))
     cells.append(code(r"""
@@ -558,19 +558,19 @@ print('  (none printed above = no pre-registered causal effect yet)')
 
 
 # ---------------------------------------------------------------------------
-# 06 — harder task: enable shell_share, clean re-run of the whole panel
+# 06 - harder task: enable shell_share, clean re-run of the whole panel
 # ---------------------------------------------------------------------------
 
 def nb_06_shell_share_rerun() -> dict:
     cells = [md(
-        "# 06 · Harder task (shell_share) — clean re-run: **E1 + E2**\n"
+        "# 06 · Harder task (shell_share) - clean re-run: **E1 + E2**\n"
         "The strong models sit at ~0.99 accuracy on shell_same/shell_diff, so they "
         "produce no breaking cells. This notebook turns on the **key-overlap "
         "distractor** (`shell_share`) and re-runs **E1 -> E2** for the whole panel, "
         "**overwriting** any stale results.\n\n"
-        "**E3 + E4 now live in notebook 07** — E3 is the heaviest experiment and was "
+        "**E3 + E4 now live in notebook 07** - E3 is the heaviest experiment and was "
         "overrunning the Colab session when bundled here. Run 06, then 07.\n\n"
-        "> **This is a design change** — note `shell_share` in your pre-registration, "
+        "> **This is a design change** - note `shell_share` in your pre-registration, "
         "and ideally commit it to `grid.yaml` (so its hash is in provenance) rather "
         "than only patching it here. The grid grows from 140 to ~200 cells/model.")]
     cells += setup_cells()
@@ -591,22 +591,22 @@ else:
           'model, but clearing also removes orphaned files from older runs.')
 """))
     cells += _model_loop(
-        "3) E1 — breaking surface (harder grid)",
+        "3) E1 - breaking surface (harder grid)",
         "~200 cells/model now. `OVERWRITE=True` + `--fresh` recompute and overwrite "
-        "every cell — every model must log `200 cells`, none should say `skip`.",
+        "every cell - every model must log `200 cells`, none should say `skip`.",
         "['scripts/e1_breaking_surface.py', '--model', key, '--stage', 'auto']",
         first_est_h=6.0,
         skip_check="C.artifact_is_current(f'{RESULTS_DIR}/e1_breaking_cells_{key}.json')",
         fresh_arg="--fresh", overwrite_default=True)
     cells += _model_loop(
-        "4) E2 — signatures",
+        "4) E2 - signatures",
         "Capture + four-bucket classification on the breaking cells.",
         "['scripts/e2_signatures.py', '--model', key]",
         first_est_h=4.0,
         skip_check="C.artifact_is_current(f'{RESULTS_DIR}/e2_signatures_{key}.json')",
         overwrite_default=True)
     cells.append(md("## 5) Check the run is clean, then continue in notebook 07\n"
-                    "Every model must show `ncells=200` and `shell_share` in its sims — if any "
+                    "Every model must show `ncells=200` and `shell_share` in its sims - if any "
                     "shows 140, it was skipped and the panel is mixed."))
     cells.append(code(r"""
 import json, glob, os, statistics
@@ -626,7 +626,7 @@ print('\nIf all OK -> run notebook 07 (E3 causal + E4).')
 
 
 # ---------------------------------------------------------------------------
-# 07 — E3 causal + E4 (split out of 06: E3 is the heaviest experiment)
+# 07 - E3 causal + E4 (split out of 06: E3 is the heaviest experiment)
 # ---------------------------------------------------------------------------
 
 def nb_07_e3_e4() -> dict:
@@ -637,7 +637,7 @@ def nb_07_e3_e4() -> dict:
         "overrunning the Colab session.\n\n"
         "**Run this AFTER 06 finishes E1+E2.** It reads E1/E2 outputs from Drive.\n\n"
         "> It re-enables `shell_share` in `grid.yaml` because **E3 rebuilds the probes** "
-        "— a fresh clone without `shell_share` would generate different probes than "
+        "- a fresh clone without `shell_share` would generate different probes than "
         "E1/E2 did. (Committing `shell_share` to `grid.yaml` makes this a no-op.)")]
     cells += setup_cells()
     cells.append(md("## 1) Re-enable shell_share (must match the grid E1/E2 used)"))
@@ -656,11 +656,11 @@ for f in sorted(glob.glob(f'{RESULTS_DIR}/e1_surface_*.json')):
     bad += (not ok)
     print(f'{m:24s} ncells={len(cells_):3d} e2={str(e2):5s} {"OK" if ok else "<-- fix in 06 first"}')
 if bad:
-    raise SystemExit('E1/E2 not clean for every model — re-run notebook 06 with OVERWRITE=True.')
+    raise SystemExit('E1/E2 not clean for every model - re-run notebook 06 with OVERWRITE=True.')
 print('\nAll clean. Proceeding to E3.')
 """))
     cells += _model_loop(
-        "3) E3 — bidirectional causal patching",
+        "3) E3 - bidirectional causal patching",
         "The heavy one. Self-patch must stay token-identical (the script ABORTS "
         "otherwise). The 23 h guard stops before a model that can't finish; re-run "
         "with `OVERWRITE=False` to resume the remaining models.",
@@ -668,7 +668,7 @@ print('\nAll clean. Proceeding to E3.')
         first_est_h=6.0,
         skip_check="C.artifact_is_current(f'{RESULTS_DIR}/e3_causal_{key}.json')",
         overwrite_default=True)
-    cells.append(md("## 4) E4 — family table + authoritative causal decision"))
+    cells.append(md("## 4) E4 - family table + authoritative causal decision"))
     cells.append(code("run(['scripts/e4_families.py', '--models'] + %s)" % json.dumps(MODELS)))
     cells.append(md("## 5) Headline"))
     cells.append(code(r"""
@@ -695,7 +695,7 @@ if not hit:
 
 
 # ---------------------------------------------------------------------------
-# 08 — E3 backfill for the models 07 couldn't finish in 24 h, then E4
+# 08 - E3 backfill for the models 07 couldn't finish in 24 h, then E4
 # ---------------------------------------------------------------------------
 
 # Edit this list to whichever models still have a stale/small-N E3 (compare each
@@ -711,7 +711,7 @@ def nb_08_e3_backfill() -> dict:
         "E3 over all 7 didn't fit in one 24 h session, so this notebook runs E3 for "
         f"**just the leftover models** ({', '.join(E3_BACKFILL_MODELS)}) and then "
         "re-runs **E4 over the full panel**.\n\n"
-        "Edit `MODELS` in the E3 cell if a different set is outstanding — a model's "
+        "Edit `MODELS` in the E3 cell if a different set is outstanding - a model's "
         "E3 is stale when `e3_causal_{m}.json` `n_pairs` ≠ `e2_signatures_{m}.json` "
         "`pairs_used`. `OVERWRITE=True` overwrites the stale small-N E3 files.")]
     cells += setup_cells()
@@ -725,7 +725,7 @@ for m in %(all)s:
     try:
         e2 = json.load(open(f'{RESULTS_DIR}/e2_signatures_{m}.json'))['pairs_used']
     except Exception:
-        print(f'{m:24s} NO E2 — run 06 first'); continue
+        print(f'{m:24s} NO E2 - run 06 first'); continue
     p = f'{RESULTS_DIR}/e3_causal_{m}.json'
     if not os.path.exists(p):
         print(f'{m:24s} E2_pairs={e2:4d}  E3 MISSING  <-- backfill'); continue
@@ -733,7 +733,7 @@ for m in %(all)s:
     print(f'{m:24s} E2_pairs={e2:4d}  E3_n={n3}  {"STALE <-- backfill" if n3 != e2 else "ok"}')
 """ % {"all": json.dumps(MODELS)}))
     cells += _model_loop(
-        "3) E3 — backfill the leftover models",
+        "3) E3 - backfill the leftover models",
         "Only the models listed here (edit `MODELS` if needed). `OVERWRITE=True` so "
         "a stale small-N E3 file gets overwritten. The 23 h guard still protects the "
         "session.",
@@ -762,39 +762,39 @@ if not hit:
 
 
 # ---------------------------------------------------------------------------
-# 09 — E2 re-run that RECORDS its pair list (prerequisite for any new E3)
+# 09 - E2 re-run that RECORDS its pair list (prerequisite for any new E3)
 # ---------------------------------------------------------------------------
 
 def nb_09_e2_pairs() -> dict:
     cells = [md(
-        "# 09 · E2 re-run — record the pair list  ·  **needs A100**\n"
+        "# 09 · E2 re-run - record the pair list  ·  **needs A100**\n"
         "**Not a re-analysis. The pre-registration is untouched** (M2 floor stays at "
         "the registered 0.10). This run is byte-identical in configuration to the one "
         "that produced the current E2 artifacts; the only difference is that it now "
         "*writes down* which matched pairs it measured (`pairs_by_cell`).\n\n"
         "**Why it is needed.** E3 used to re-derive the pairs by re-grading. Grading "
-        "batches through `_generate_batch_adaptive`, which halves the batch on OOM — a "
+        "batches through `_generate_batch_adaptive`, which halves the batch on OOM - a "
         "different batch composition changes the left-padding, and a greedy token can "
         "flip at the margin. So E2 measured the mechanism on **614** pairs while E3 "
         "measured causality on **625**. Mechanism and causality must be measured on "
         "the *same* sample. E3 now READS this list and aborts if it is missing.\n\n"
         "**Read the reproduction check in step 3.** The re-run should reproduce the "
         "old bucket rates exactly. If it does not, E2 is not reproducible run-to-run "
-        "(the adaptive-batching path is the suspect) — that is a finding in itself, "
+        "(the adaptive-batching path is the suspect) - that is a finding in itself, "
         "and it must be resolved before anything is called confirmatory.")]
     cells += setup_cells()
     cells.append(md(
-        "## 0) Grid check — must run BEFORE anything reads an artifact\n"
+        "## 0) Grid check - must run BEFORE anything reads an artifact\n"
         "`shell_share` is now committed in `configs/grid.yaml`, so this is a no-op "
         "guard. It stays because the freshness check below compares each artifact's "
-        "recorded config hashes against `grid.yaml` **as it is on disk right now** — "
+        "recorded config hashes against `grid.yaml` **as it is on disk right now** - "
         "so the grid has to be settled before any artifact is judged current or stale."))
     cells.append(SHELL_SHARE_CELL)
     cells.append(md(
-        "## 1) Back up the pre-fix artifacts (idempotent — safe to re-run every session)\n"
+        "## 1) Back up the pre-fix artifacts (idempotent - safe to re-run every session)\n"
         "This does **not** overwrite a backup that already exists. The `.pre_pairfix` "
         "files are the only surviving record of the pre-fix numbers, and the "
-        "reproduction check in step 4 reads them **from disk** — so the check still "
+        "reproduction check in step 4 reads them **from disk** - so the check still "
         "works in a *later* session, after this one has been recycled."))
     cells.append(code(r"""
 import json, os, glob, shutil
@@ -833,23 +833,23 @@ print('\nalready done (pair list recorded):',
       [m for m in %(panel)s if _pairs_recorded(m)] or 'none')
 """ % {"panel": json.dumps(MODELS)}))
     cells.append(md(
-        "## 3) E2 — same config, now recording `pairs_by_cell`\n"
+        "## 3) E2 - same config, now recording `pairs_by_cell`\n"
         "**This does not fit in one 24 h Colab session** (llama alone is ~1.4 h; gemma "
         "is far slower on eager attention). It is built to be run over several "
         "sessions: leave `OVERWRITE = False` and re-run this notebook until every model "
         "reports `pairs_by_cell`. A model is skipped only if it **already has its pair "
-        "list** — *not* merely because an `e2_signatures_*.json` exists, since every "
+        "list** - *not* merely because an `e2_signatures_*.json` exists, since every "
         "model has one of those from the pre-fix runs."))
     cells += _model_loop(
         "E2 per model (resumable)",
         "Identical pre-registration; the M2 floor is NOT changed here.",
         "['scripts/e2_signatures.py', '--model', key]",
         first_est_h=4.0,
-        # Resume on the PAIR LIST, not on file existence — see the note above.
+        # Resume on the PAIR LIST, not on file existence - see the note above.
         skip_check="_pairs_recorded(key)",
         overwrite_default=False)
     cells.append(md(
-        "## 4) Reproduction check — did the identical re-run give the identical numbers?\n"
+        "## 4) Reproduction check - did the identical re-run give the identical numbers?\n"
         "Reads the `.pre_pairfix` backups from disk, so it is valid in any later "
         "session. Run it once every model has been re-run."))
     cells.append(code(r"""
@@ -888,15 +888,15 @@ elif not pending:
 
 
 # ---------------------------------------------------------------------------
-# 10 — EXPLORATORY extended k-sweep (redundancy vs dissociation) + E4
+# 10 - EXPLORATORY extended k-sweep (redundancy vs dissociation) + E4
 # ---------------------------------------------------------------------------
 
 _PARALLEL_NOTE = (
-    "\n\n> ### PARALLEL SPLIT — this session owns: {these}  ·  {gpu}\n"
+    "\n\n> ### PARALLEL SPLIT - this session owns: {these}  ·  {gpu}\n"
     "> Its siblings **{siblings}** own the rest. Launch the groups in **separate "
     "Colab sessions at the same time** to cut wall-clock. They write disjoint model "
     "checkpoints, so they never touch each other's files. **Do not also run the "
-    "full-panel notebook 10 while these run** — it would overlap all of them. E4 "
+    "full-panel notebook 10 while these run** - it would overlap all of them. E4 "
     "stays parked in every split session until the *whole* panel is complete; run it "
     "from whichever session finishes last."
 )
@@ -906,11 +906,11 @@ def nb_10_ksweep(subset=None, title_n="10", parallel_note="") -> dict:
     # Embed the model list as a LITERAL (the notebook runtime has no `MODELS` name).
     subset_expr = json.dumps(subset if subset is not None else MODELS)
     cells = [md(
-        f"# {title_n} · Extended k-sweep — **EXPLORATORY**  ·  needs A100\n"
+        f"# {title_n} · Extended k-sweep - **EXPLORATORY**  ·  needs A100\n"
         "> ### Status: post-hoc, result-driven extension. NOT pre-registered.\n"
         "> The pre-registered primary sweep is **k ∈ {1, 5, 10}**. k ∈ {20, 30} was "
-        "added *after* seeing that the curves had not saturated. Whatever comes out — "
-        "redundancy or dissociation — it is reported as **exploratory** in the paper, "
+        "added *after* seeing that the curves had not saturated. Whatever comes out - "
+        "redundancy or dissociation - it is reported as **exploratory** in the paper, "
         "with this notebook and the dated amendment commit as its provenance. Labelling "
         "it honestly does not weaken the claim; it is what makes the claim usable.\n\n"
         "**What it resolves.** At k ≤ 10 the break-flip curve was still climbing for "
@@ -921,7 +921,7 @@ def nb_10_ksweep(subset=None, title_n="10", parallel_note="") -> dict:
         "* curve keeps rising → the null was a **k-ceiling artifact (redundancy)**;\n"
         "* curve stays flat while others saturate → a **genuine dissociation**.\n\n"
         "**Also watch the tie diagnostic.** gemma2 has 13 heads tied at score 1.000, so "
-        "its k=10 set was 10 arbitrary members of a 13-way tie — its k=10 null was never "
+        "its k=10 set was 10 arbitrary members of a 13-way tie - its k=10 null was never "
         "interpretable. k=20/30 covers the whole tied block.\n\n"
         "**Prerequisite: notebook 09.** E3 reads E2's recorded pair list and will abort "
         "without it." + parallel_note)]
@@ -930,7 +930,7 @@ def nb_10_ksweep(subset=None, title_n="10", parallel_note="") -> dict:
         "## 0) Which models this session owns\n"
         "`MODELS_SUBSET` is the list of models **this** notebook will sweep. To run the "
         "k-sweep across several Colab sessions at once, give each session a **disjoint** "
-        "subset — two sessions sweeping the *same* model would write the same checkpoint "
+        "subset - two sessions sweeping the *same* model would write the same checkpoint "
         "files and corrupt each other. Models already complete (current E3 with all five "
         "k) are skipped regardless, so an overlap of *finished* models is harmless; it is "
         "an overlap of *unfinished* ones that must be avoided."))
@@ -953,18 +953,18 @@ for f in sorted(glob.glob(f'{RESULTS_DIR}/e2_signatures_*.json')):
         missing.append(os.path.basename(f))
 if missing:
     raise SystemExit('These E2 artifacts predate the pair-set fix: %s\n'
-                     'Run notebook 09 first — otherwise E3 would measure causality on a '
+                     'Run notebook 09 first - otherwise E3 would measure causality on a '
                      'different sample than E2 measured the mechanism on.' % missing)
-print('OK — extended sweep active, and every E2 artifact carries its pair list.')
+print('OK - extended sweep active, and every E2 artifact carries its pair list.')
 """))
     cells.append(md(
-        "## 3) E3 — extended k-sweep (exploratory)\n"
-        "**The heaviest run in the suite** — five k-values instead of three, on the "
+        "## 3) E3 - extended k-sweep (exploratory)\n"
+        "**The heaviest run in the suite** - five k-values instead of three, on the "
         "whole panel. It will not finish in one 24 h session. It is resumable: leave "
         "`OVERWRITE = False` and re-run until every model reports all five k. A model "
         "is skipped only if its E3 artifact is **current** (built under today's "
         "`e3.yaml`, i.e. carrying k = 20 and 30) **and** was built from E2's recorded "
-        "pair list — not merely because an `e3_causal_*.json` exists, since every model "
+        "pair list - not merely because an `e3_causal_*.json` exists, since every model "
         "has a stale one from the k ≤ 10 runs."))
     cells.append(code(r"""
 import json, os
@@ -1005,7 +1005,7 @@ for key in [m for m in _PANEL if not _e3_current(m)]:
     left = CAP_H - (time.time() - start) / 3600.0
     if left < 0.5:
         print(f'STOP before {key}: {left:.1f} h left of the {CAP_H} h cap. '
-              f'Re-run this notebook to continue — finished k are checkpointed.')
+              f'Re-run this notebook to continue - finished k are checkpointed.')
         break
     print(f'--- {key}: {left:.1f} h of budget left ---')
     t0 = time.time()
@@ -1023,19 +1023,19 @@ for key in [m for m in _PANEL if not _e3_current(m)]:
             torch.cuda.empty_cache()
 
 remaining = [m for m in _PANEL if not _e3_current(m)]
-print('\nstill incomplete:', remaining or 'none — the sweep is finished.')
+print('\nstill incomplete:', remaining or 'none - the sweep is finished.')
 """ % {"cap": HARD_CAP_H}))
     cells.append(md(
-        "## 4) E4 — family table + causal decision (runs only when the FULL panel is done)\n"
+        "## 4) E4 - family table + causal decision (runs only when the FULL panel is done)\n"
         "E4's authoritative BH is over **all** {N models × 2 directions}, so it must not "
         "run on a partial panel. When several sessions split the sweep, this cell no-ops "
-        "until every model is complete — run it (here, or notebook 07) from whichever "
+        "until every model is complete - run it (here, or notebook 07) from whichever "
         "session finishes last."))
     cells.append(code(r"""
 FULL_PANEL = %(full)s
 notdone = [m for m in FULL_PANEL if not _e3_current(m)]
 if notdone:
-    print('E4 skipped — full panel not complete. Still need:', notdone)
+    print('E4 skipped - full panel not complete. Still need:', notdone)
     print('Re-run this cell from the session that finishes last.')
 else:
     run(['scripts/e4_families.py', '--models'] + FULL_PANEL)
@@ -1059,7 +1059,7 @@ for m in %(models)s:
         if v is not None: flip[k] = v
     tie_ks = ','.join(k for k in KS if (ties.get(k) or {}).get('arbitrary')) or '-'
     # The exploratory question is whether extending PAST k=10 raises the flip rate,
-    # so compare the best of {k20, k30} to k10 — not the last two points, which can
+    # so compare the best of {k20, k30} to k10 - not the last two points, which can
     # call a curve "flat" only because k30 barely edged k20 after a big k10->k20 jump.
     if '20' in flip and '30' in flip and '10' in flip:
         delta = max(flip['20'], flip['30']) - flip['10']
@@ -1073,26 +1073,26 @@ print('flat past k10  => mechanism-vs-causality dissociation.')
 print('tie-broken k   => at that k the head SET was decided by (layer,head) sort order,')
 print('                  not score; a null there says nothing about the heads. Read the')
 print('                  trend from the LOWEST NON-tie-broken k upward.')
-print('\nEXPLORATORY — report as such.')
+print('\nEXPLORATORY - report as such.')
 """ % {"models": json.dumps(MODELS)}))
     return notebook(cells)
 
 
 # ---------------------------------------------------------------------------
-# 11 — E5 robustness
+# 11 - E5 robustness
 # ---------------------------------------------------------------------------
 
 def nb_11_e5() -> dict:
     cells = [md(
         "# 11 · E5 Robustness  ·  **needs A100**\n"
         "The §9 robustness checks on the clean panel. Every variant writes a **tagged** "
-        "artifact and **never touches the primary one** — the pre-registered analysis "
+        "artifact and **never touches the primary one** - the pre-registered analysis "
         "stays exactly where it is, and each check is read *beside* it.\n\n"
         "| variant | what it answers | cost |\n|---|---|---|\n"
         "| **wu** | does the mechanism survive a **different head detector** (Wu/copy "
         "heads, not argmax)? **the insurance policy on the headline** | 1 E2 / model |\n"
         "| **m2sens** | how much of the M2 story is the **0.10 distractor-mass floor**? "
-        "Reported side-by-side with the registered floor — *not* a re-tune | 1 E2 / model |\n"
+        "Reported side-by-side with the registered floor - *not* a re-tune | 1 E2 / model |\n"
         "| ksens | does it hold at the sensitivity k? | 1 E2 / model |\n"
         "| steps3 | does it hold averaging masses over 3 answer steps? | 1 E2 / model |\n"
         "| seeds | reliability: mean ± range over seed repeats (+ R_self) | 3 E2 / model |\n\n"
@@ -1118,7 +1118,7 @@ VARIANTS = 'wu'
 # of distractor_mass over distractor_hit failures: p5=0.103 p25=0.154 p50=0.193.
 M2_ALT_FLOOR = 0.15
 
-# FULL PANEL by default — models whose variant is already current auto-skip below,
+# FULL PANEL by default - models whose variant is already current auto-skip below,
 # so you do not have to edit this to run "the rest". olmo2 + phi3.5 already have a
 # fresh `wu` and will be skipped; the other five run.
 # To parallelise, give each Colab session a DISJOINT slice, e.g.
@@ -1149,7 +1149,7 @@ print('already complete:', [m for m in E5_MODELS if _e5_current(m)] or 'none')
 print('to run          :', [m for m in E5_MODELS if not _e5_current(m)])
 """))
     cells += _model_loop(
-        "3) E5 — robustness per model (resumable)",
+        "3) E5 - robustness per model (resumable)",
         "Each variant re-runs E2 in a clean subprocess with the pinned model and "
         "writes a TAGGED artifact; the primary is never overwritten.",
         "['scripts/e5_robustness.py', '--model', key, '--variants', VARIANTS,"
@@ -1158,7 +1158,7 @@ print('to run          :', [m for m in E5_MODELS if not _e5_current(m)])
         skip_check="_e5_current(key)",
         overwrite_default=False,
         models="E5_MODELS")
-    cells.append(md("## 4) Detector independence — does the mechanism survive the Wu head list?"))
+    cells.append(md("## 4) Detector independence - does the mechanism survive the Wu head list?"))
     cells.append(code(r"""
 import json, os
 RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
@@ -1176,7 +1176,7 @@ print('\nIf the Wu column reproduces the primary column, the mechanism is not an
       'artifact of the detector choice.')
 """))
     cells.append(md(
-        "## 5) M2 threshold sensitivity — side by side, not a replacement\n"
+        "## 5) M2 threshold sensitivity - side by side, not a replacement\n"
         "The left column is the analysis of record. The right column shows how much of "
         "it rests on the floor. Both go in the paper."))
     cells.append(code(r"""
@@ -1186,22 +1186,22 @@ print(f'{"model":22s} {left:36s} {right:36s}')
 for m in E5_MODELS:
     print(f'{m:22s} {buckets(f"{RESULTS_DIR}/e2_signatures_{m}.json"):36s} '
           f'{buckets(f"{RESULTS_DIR}/e2_signatures_{m}_m2sens.json"):36s}')
-print('\nA large M2 drop on the right does NOT mean the primary is wrong — it means the')
+print('\nA large M2 drop on the right does NOT mean the primary is wrong - it means the')
 print('M2 rate is floor-sensitive, and that belongs in the paper as a limitation.')
 """))
     return notebook(cells)
 
 
 # ---------------------------------------------------------------------------
-# 13 — full-set patch (llama k=39 + gemma k=77) — EXPLORATORY, decisive
+# 13 - full-set patch (llama k=39 + gemma k=77) - EXPLORATORY, decisive
 # ---------------------------------------------------------------------------
 
 def nb_13_fullset() -> dict:
     cells = [md(
-        "# 13 · Full-set patch — llama3.1 k=39, gemma2 k=77  ·  **EXPLORATORY**  ·  needs A100 80 GB\n"
+        "# 13 · Full-set patch - llama3.1 k=39, gemma2 k=77  ·  **EXPLORATORY**  ·  needs A100 80 GB\n"
         "> ### The decisive run for the reviewer's under-dosing objection.\n"
         "llama3.1 and gemma2 are BH-significant on `break` but stay **below the 20 pp "
-        "margin** through k=30. The objection: *maybe their null is under-dosing — we "
+        "margin** through k=30. The objection: *maybe their null is under-dosing - we "
         "only patched 30 of their 39 / 77 detected heads.* This patches the **entire "
         "detected set** and asks whether the effect still stays sub-margin.\n\n"
         "* still sub-margin at the full set → **dissociation confirmed** (weak but real "
@@ -1216,13 +1216,13 @@ def nb_13_fullset() -> dict:
     cells += setup_cells()
     cells.append(md("## 1) shell_share must match the grid E1/E2/E3 used"))
     cells.append(SHELL_SHARE_CELL)
-    cells.append(md("## 2) Preconditions — the pulled code has --extra-k, and the head counts"))
+    cells.append(md("## 2) Preconditions - the pulled code has --extra-k, and the head counts"))
     cells.append(code(r"""
 import subprocess, sys, json, os
 # the clone must be new enough to carry --extra-k
 h = subprocess.run([sys.executable, 'scripts/e3_causal.py', '--help'],
                    cwd='/content/rope-part3', capture_output=True, text=True).stdout
-assert '--extra-k' in h, 'pulled code is too old — Cell 2 must clone/pull the latest repo (needs --extra-k)'
+assert '--extra-k' in h, 'pulled code is too old - Cell 2 must clone/pull the latest repo (needs --extra-k)'
 
 # verify the FULL detected head count per model (do not assume 39 / 77)
 sys.path.insert(0, '/content/rope-part3/src'); sys.path.insert(0, '/content/rope-part3/scripts')
@@ -1235,15 +1235,15 @@ for key in ['llama31_8b_instruct', 'gemma2_9b_it']:
     print(f'{key:22s} detected argmax heads = {len(det._ranked("argmax"))}')
 print('\nUse --extra-k = that number (39 for llama, 77 for gemma). Larger would be padding, which is refused.')
 """))
-    cells.append(md("## 3) llama3.1 — full set (k = 39).  Resumes k=1..30; only k=39 computes."))
+    cells.append(md("## 3) llama3.1 - full set (k = 39).  Resumes k=1..30; only k=39 computes."))
     cells.append(code(
         "run(['scripts/e3_causal.py', '--model', 'llama31_8b_instruct', '--extra-k', '39'])"))
-    cells.append(md("## 4) gemma2 — full set (k = 77).  **80 GB runtime** (eager)."))
+    cells.append(md("## 4) gemma2 - full set (k = 77).  **80 GB runtime** (eager)."))
     cells.append(code(
         "run(['scripts/e3_causal.py', '--model', 'gemma2_9b_it', '--extra-k', '77'])"))
-    cells.append(md("## 5) E4 — re-run so the authoritative BH covers k=39 / k=77"))
+    cells.append(md("## 5) E4 - re-run so the authoritative BH covers k=39 / k=77"))
     cells.append(code("run(['scripts/e4_families.py', '--models'] + %s)" % json.dumps(MODELS)))
-    cells.append(md("## 6) The verdict — does the full set clear the 20 pp margin?"))
+    cells.append(md("## 6) The verdict - does the full set clear the 20 pp margin?"))
     cells.append(code(r"""
 import json, os
 RESULTS_DIR = os.environ['RFM_RESULTS_DIR']
@@ -1255,7 +1255,7 @@ for m, full_k in [('llama31_8b_instruct', '39'), ('gemma2_9b_it', '77')]:
     if not os.path.exists(p):
         print(f'{m}: no E3 output'); continue
     e3 = json.load(open(p))['k']
-    print(f'\n=== {m}  (full detected set: k={full_k}) — BREAK direction ===')
+    print(f'\n=== {m}  (full detected set: k={full_k}) - BREAK direction ===')
     print(f'{"k":>4s} {"break":>7s} {"control":>8s} {"margin":>8s} {"≥20pp":>6s} {"perm p":>9s} {"E4 effect":>10s}')
     for k in ['10', '20', '30', full_k]:
         kd = e3.get(k)
@@ -1283,27 +1283,27 @@ print('\nEXPLORATORY (k > 10). Report as such.')
 
 
 # ---------------------------------------------------------------------------
-# 14 — value / MLP patch site (llama bottleneck localisation) — EXPLORATORY
+# 14 - value / MLP patch site (llama bottleneck localisation) - EXPLORATORY
 # ---------------------------------------------------------------------------
 
 def nb_14_sites() -> dict:
     cells = [md(
-        "# 14 · Value / MLP patch site — where is llama3.1's bottleneck?  ·  **EXPLORATORY**  ·  A100 40 GB\n"
+        "# 14 · Value / MLP patch site - where is llama3.1's bottleneck?  ·  **EXPLORATORY**  ·  A100 40 GB\n"
         "llama3.1 stays sub-margin on `break` even patching its **full 39-head set** "
         "(notebook 13): the retrieval-head *outputs* (`z_h`) are not the bottleneck. "
         "This asks *where* it is, by moving the patch site downstream:\n"
-        "* **`v`** — a **KV-cache swap**: the retrieval heads' value vectors at the "
+        "* **`v`** - a **KV-cache swap**: the retrieval heads' value vectors at the "
         "**context span positions** (needle + distractors) are replaced with the "
         "donor's. This is what retrieval actually reads. *(The first implementation "
-        "patched the generation-step `v_proj` — structurally null, since retrieval "
+        "patched the generation-step `v_proj` - structurally null, since retrieval "
         "reads V from the cached context, not the answer step; it was replaced and "
-        "its invalid outputs discarded — amendment §M.)*\n"
-        "* **`mlp`** — the layer's whole MLP output at the answer step.\n\n"
-        "**Correctness guards (enforced by the script — it aborts, so any output you "
+        "its invalid outputs discarded - amendment §M.)*\n"
+        "* **`mlp`** - the layer's whole MLP output at the answer step.\n\n"
+        "**Correctness guards (enforced by the script - it aborts, so any output you "
         "see already passed):** per-site **self-patch no-op** *and* a **never-op "
-        "detector** (a foreign donor must actually change the target tensor — the "
+        "detector** (a foreign donor must actually change the target tensor - the "
         "check the null v implementation would have failed).\n\n"
-        "**Interpretive anchor — v only.** On qwen2.5-3b (retrieval IS causal) the "
+        "**Interpretive anchor - v only.** On qwen2.5-3b (retrieval IS causal) the "
         "v-cache-swap **must fire** a large `break`; if it does not, do not trust a "
         "llama3.1 v-null. For **mlp**, a null is a *real finding* (not required to "
         "fire). `--site v/mlp` writes a separate `*_site-*.json`; preregistration.yaml "
@@ -1333,42 +1333,42 @@ def site_meta(model, tag):
 print('helpers ready.')
 """))
     cells.append(md(
-        "## 2) llama3.1 — MLP site (independent, run now).  k = 10, 30, 39.\n"
+        "## 2) llama3.1 - MLP site (independent, run now).  k = 10, 30, 39.\n"
         "mlp does not wait for the v anchor; a llama mlp-null is itself a finding."))
     cells.append(code(
         "run(['scripts/e3_causal.py', '--model', 'llama31_8b_instruct',\n"
         "     '--site', 'mlp', '--tag', 'site-mlp', '--k-list', '10', '30', '--extra-k', '39'])"))
     cells.append(md(
-        "## 3) v ANCHOR — qwen2.5-3b, KV-cache swap (must fire a large break)"))
+        "## 3) v ANCHOR - qwen2.5-3b, KV-cache swap (must fire a large break)"))
     cells.append(code(
         "run(['scripts/e3_causal.py', '--model', 'qwen25_3b_instruct',\n"
         "     '--site', 'v', '--tag', 'site-v', '--k-list', '10', '30'])"))
-    cells.append(md("## 4) v anchor gate — did the cache-swap fire on the causal model?"))
+    cells.append(md("## 4) v anchor gate - did the cache-swap fire on the causal model?"))
     cells.append(code(r"""
 r = read_break('qwen25_3b_instruct', 'site-v')
 v_anchor_ok = False
 if not r:
-    print('qwen3b site-v: NO OUTPUT — the run aborted (self-patch or never-op failed). Fix before llama-v.')
+    print('qwen3b site-v: NO OUTPUT - the run aborted (self-patch or never-op failed). Fix before llama-v.')
 else:
     best = max(x['margin'] for x in r.values())
     print(f'qwen3b v-cache-swap: best break-margin over k = {best:+.3f}  (self_patch_ok={all(x["self_ok"] for x in r.values())})')
     # the script already enforced self-patch + never-op; here we check the anchor fired
     v_anchor_ok = best >= 0.20
-    print('V ANCHOR PASSED — proceed to llama v.' if v_anchor_ok else
-          '*** V ANCHOR did NOT clear 20pp on a causal model — investigate before trusting llama v. ***')
+    print('V ANCHOR PASSED - proceed to llama v.' if v_anchor_ok else
+          '*** V ANCHOR did NOT clear 20pp on a causal model - investigate before trusting llama v. ***')
 """))
-    cells.append(md("## 5) llama3.1 — v site (run only if the v anchor above passed).  k = 10, 30, 39."))
+    cells.append(md("## 5) llama3.1 - v site (run only if the v anchor above passed).  k = 10, 30, 39."))
     cells.append(code(r"""
 if v_anchor_ok:
     run(['scripts/e3_causal.py', '--model', 'llama31_8b_instruct',
          '--site', 'v', '--tag', 'site-v', '--k-list', '10', '30', '--extra-k', '39'])
 else:
-    print('SKIPPED — v anchor failed; a llama v-result would not be interpretable yet.')
+    print('SKIPPED - v anchor failed; a llama v-result would not be interpretable yet.')
 """))
-    cells.append(md("## 6) The verdict — is llama3.1's bottleneck at v or mlp?"))
+    cells.append(md("## 6) The verdict - is llama3.1's bottleneck at v or mlp?"))
     cells.append(code(r"""
 for model in ['qwen25_3b_instruct', 'llama31_8b_instruct']:
-    print(f'\n=== {model} — BREAK direction, by site ===')
+    print(f'\n=== {model} - BREAK direction, by site ===')
     for tag, site in [('site-v', 'v'), ('site-mlp', 'mlp')]:
         r = read_break(model, tag); meta = site_meta(model, tag)
         if not r: print(f'  [{site}] no output'); continue
@@ -1387,19 +1387,19 @@ print('    dissociation holds across three intervention points. EXPLORATORY eith
 
 
 # ---------------------------------------------------------------------------
-# 12 — E2 reproduction check (amendment §I) — CPU only, no model load
+# 12 - E2 reproduction check (amendment §I) - CPU only, no model load
 # ---------------------------------------------------------------------------
 
 def nb_repro_check() -> dict:
     cells = [md(
         "# 12 · E2 reproduction check  ·  **CPU (no GPU)**\n"
         "The last open verification (amendment §I). The E2 pair-recording re-run was "
-        "config-identical to the run that produced the pre-fix artifacts — same "
-        "pre-registration, same M2 floor, same seed — so it **must reproduce the "
+        "config-identical to the run that produced the pre-fix artifacts - same "
+        "pre-registration, same M2 floor, same seed - so it **must reproduce the "
         "pre-fix numbers exactly**. This compares each `e2_signatures_{model}.json` "
         "against its `.pre_pairfix` backup (pairs, bucket rates, and pair-list "
         "self-consistency).\n\n"
-        "Pure JSON — it loads **no model** and needs **no GPU**. Runs in seconds on a "
+        "Pure JSON - it loads **no model** and needs **no GPU**. Runs in seconds on a "
         "plain CPU runtime.\n\n"
         "**Read the verdict:** every model should say `reproduced`. A `*** DRIFT ***` "
         "means E2 is not deterministic run-to-run (the adaptive OOM batch-halving in "
@@ -1415,7 +1415,7 @@ os.environ['RFM_RESULTS_DIR'] = RESULTS_DIR
 print('Results dir:', RESULTS_DIR)
 """))
     cells.append(code(r"""
-# Clone Part-3 only (the script + configs). No Part-1/Part-2, no model weights.
+# Clone this repo only (the script + configs). No the prior repos, no model weights.
 import os, subprocess
 GITHUB_TOKEN = ""          # ghp_...  (only if the repo is private)
 owner, name, D = 'CengizhanBayram', 'retrieval-failure-mechanism', '/content/rope-part3'
@@ -1452,11 +1452,11 @@ print('exit code:', p.returncode,
 def main():
     # Filenames carry the Colab runtime they need, so you never start a 20 h run
     # on the wrong GPU.
-    #   A100  — every notebook that LOADS a model. gemma-2-9b is forced to eager
+    #   A100  - every notebook that LOADS a model. gemma-2-9b is forced to eager
     #           attention (sdpa silently drops its logit-softcapping) and nb 00
     #           loads fp32 for the math gate, so 40 GB is the floor. L4/T4 will
     #           OOM.
-    #   CPU   — pure-JSON analysis; no accelerator needed (works on any runtime).
+    #   CPU   - pure-JSON analysis; no accelerator needed (works on any runtime).
     outputs = {
         "00_A100_setup_and_guardrails.ipynb": nb_00(),
         "01_A100_e1_breaking_surface.ipynb": nb_e1(),
@@ -1474,7 +1474,7 @@ def main():
         # panel minus the already-complete llama+gemma). phi3.5 is isolated in 10c
         # because it is the only remaining eager model (needs A100 80 GB); the four
         # sdpa models split 2+2 across 40 GB sessions. Do NOT also run the
-        # full-panel notebook 10 alongside these — it would overlap all three.
+        # full-panel notebook 10 alongside these - it would overlap all three.
         "10a_A100_e3_ksweep_GROUP1.ipynb": nb_10_ksweep(
             subset=["mistral_7b_instruct", "olmo2_7b_instruct"],
             title_n="10a",
@@ -1491,7 +1491,7 @@ def main():
             subset=["phi35_mini"],
             title_n="10c",
             parallel_note=_PARALLEL_NOTE.format(
-                these="phi3.5 (eager)", gpu="A100 80 GB — phi OOMs 40 GB",
+                these="phi3.5 (eager)", gpu="A100 80 GB - phi OOMs 40 GB",
                 siblings="10a (mistral, olmo2) and 10b (qwen2.5-7b, qwen2.5-3b)")),
         "11_A100_e5_robustness.ipynb": nb_11_e5(),
         "12_CPU_repro_check.ipynb": nb_repro_check(),

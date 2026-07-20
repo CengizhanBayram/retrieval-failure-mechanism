@@ -2,7 +2,7 @@
 Reproduction check for the E2 pair-recording re-run (amendment §I).
 
 The re-run is configuration-identical to the run that produced the pre-fix
-artifacts — same pre-registration, same M2 floor, same seed. The ONLY intended
+artifacts - same pre-registration, same M2 floor, same seed. The ONLY intended
 difference is that it now records ``pairs_by_cell``. It must therefore reproduce
 the pre-fix numbers exactly.
 
@@ -12,7 +12,7 @@ left-padding and a greedy token can flip at the margin). That would outrank ever
 other open question, and nothing may be called confirmatory until it is resolved.
 
 Compares each ``e2_signatures_{model}.json`` against its
-``.pre_pairfix`` backup. Pure JSON — no GPU, no model load. Measurement only (§12).
+``.pre_pairfix`` backup. Pure JSON - no GPU, no model load. Measurement only (§12).
 
 Usage:
     python scripts/check_e2_repro.py
@@ -54,13 +54,13 @@ def main(argv=None) -> int:
     print(f"{'model':22s} {'pairs before -> after':24s} {'bucket rates':11s} verdict")
     # Two DISTINCT properties are checked, and they matter very differently:
     #
-    #  (A) SELF-CONSISTENCY — does the re-run's recorded pair list (pairs_by_cell)
+    #  (A) SELF-CONSISTENCY - does the re-run's recorded pair list (pairs_by_cell)
     #      match its own pairs_used? This is the property E3/E4 validity rests on:
     #      E3 reads pairs_by_cell, so if it agrees with pairs_used the causal
     #      measurement is on exactly the sample E2 classified. A failure here is a
     #      real bug.
     #
-    #  (B) RUN-TO-RUN REPRODUCIBILITY — does the re-run reproduce the PRE-FIX
+    #  (B) RUN-TO-RUN REPRODUCIBILITY - does the re-run reproduce the PRE-FIX
     #      artifact (made in an earlier session, likely a different GPU)? Greedy
     #      decoding near the success/failure boundary is sensitive to batch
     #      composition (adaptive OOM halving changes left-padding) and to GPU
@@ -81,7 +81,7 @@ def main(argv=None) -> int:
             continue
         new = json.loads(cur.read_text(encoding="utf-8"))
 
-        # (A) self-consistency — the property E3/E4 depend on
+        # (A) self-consistency - the property E3/E4 depend on
         n_recorded = sum(len(v) for v in new["pairs_by_cell"].values())
         self_consistent = n_recorded == new["pairs_used"]
 
@@ -112,11 +112,11 @@ def main(argv=None) -> int:
     # (A) is the gate. If any artifact is self-inconsistent, E3/E4 are NOT valid.
     if self_inconsistent:
         print("*** SELF-INCONSISTENT artifacts:", self_inconsistent)
-        print("*** pairs_by_cell disagrees with pairs_used — E3 did NOT measure causality")
+        print("*** pairs_by_cell disagrees with pairs_used - E3 did NOT measure causality")
         print("*** on the sample E2 classified. This IS a bug; fix before trusting E3/E4.")
         return 2
 
-    # (B) is a reported caveat, judged by magnitude — NOT an automatic fail.
+    # (B) is a reported caveat, judged by magnitude - NOT an automatic fail.
     if drifted:
         worst = max(d for _, d in drifted)
         print(f"Self-consistency: PASS for all {len(exact) + len(drifted)} re-run models")

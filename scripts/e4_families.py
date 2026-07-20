@@ -1,5 +1,5 @@
 """
-E4 — cross-family comparison table (task §8).
+E4 - cross-family comparison table (task §8).
 
 Assembles ONE table across the four models of the E2/E3 headline metrics and
 finalizes the authoritative BH correction across {4 models x 2 directions} for
@@ -8,7 +8,7 @@ the E3 causal decision. Measurement only (§12).
 GEMMA-2 handling (§8): each retrieval head is annotated local|global from the
 model config's sliding-window pattern. A LOCAL head whose needle lies beyond its
 window for a given context is marked ``window_limited`` upstream (E2/capture) and
-EXCLUDED from silence statistics — window truncation is never counted as M1. The
+EXCLUDED from silence statistics - window truncation is never counted as M1. The
 per-head local/global annotation is added here from AutoConfig (no weights, no
 GPU).
 
@@ -112,7 +112,7 @@ def main(argv=None):
 
     # ---- authoritative BH across {models x directions}, per k (§7) ----
     # Iterate every k that ACTUALLY appears in the E3 artifacts (the union across
-    # models), not just configs/e3.yaml k_list — otherwise a per-model exploratory
+    # models), not just configs/e3.yaml k_list - otherwise a per-model exploratory
     # extension (e.g. llama3.1 --extra-k 39, gemma2 --extra-k 77) would be silently
     # dropped from the causal decision. BH's family at a k is the tests present at
     # that k, so a full-set k with a single model is a 2-test (2-direction) family.

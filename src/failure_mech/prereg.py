@@ -8,8 +8,8 @@ or defaults that file. On a missing file or ANY missing required key it raises
 analysis output may be produced without a complete, valid pre-registration.
 
 The set of required keys (dotted paths) below is fixed by the task spec §1.2;
-their SEMANTICS are documented in README and in §5–§7 of the spec. This module
-validates presence and basic shape only — it does not invent values.
+their SEMANTICS are documented in README and in §5-§7 of the spec. This module
+validates presence and basic shape only - it does not invent values.
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ class PreregError(RuntimeError):
 def _get_dotted(d: Any, dotted: str) -> tuple[bool, Any]:
     """Return (present, value) for a dotted path in nested mappings.
 
-    A key that exists but maps to ``None`` counts as MISSING — a pre-registered
+    A key that exists but maps to ``None`` counts as MISSING - a pre-registered
     threshold must have an actual value, not a null placeholder.
     """
     cur = d
@@ -115,7 +115,7 @@ def load_prereg(path: str | Path | None = None) -> dict[str, Any]:
 
 
 def get(cfg: dict[str, Any], dotted: str) -> Any:
-    """Fetch a required, validated key. Raises ``PreregError`` if absent — use
+    """Fetch a required, validated key. Raises ``PreregError`` if absent - use
     this so a typo'd key surfaces loudly at the call site rather than as a
     silent ``None`` (§1.9)."""
     present, value = _get_dotted(cfg, dotted)
