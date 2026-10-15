@@ -83,7 +83,22 @@ def main(argv=None):
                          "pre-registered floor defines the primary analysis and an "
                          "override must never overwrite the primary artifact.")
     ap.add_argument("--tag", default=None, help="output filename suffix for variants")
+    # ---- follow-up experiment B (quantized variants); defaults = old behaviour ----
+    ap.add_argument("--heads-from", default=None,
+                    help="EXPLORATORY: take the retrieval-head list from THIS model's "
+                         "detection artifact instead of --model's own (e.g. evaluate "
+                         "llama31_8b_instruct_bnb4 with the bf16 parent's heads). "
+                         "Requires --tag.")
+    ap.add_argument("--probe-key", default=None,
+                    help="model key the ProbeFactory is built with (default: the "
+                         "'probe_key' recorded in the E1 surface file, else --model). "
+                         "Set by e7_quant_cells.py so a quantized variant sees its "
+                         "parent's byte-identical probes.")
+    ap.add_argument("--save-grades", action="store_true",
+                    help="also store every graded sample's outcome per cell "
+                         "(grades_by_cell) - used for the NF4-vs-bf16 behaviour check")
     args = ap.parse_args(argv)
+    C.require_tag_for_variant(args, "heads_from")
     if args.m2_min_distractor_mass is not None and not args.tag:
         raise SystemExit(
             "--m2-min-distractor-mass requires --tag. Changing the M2 floor after "
@@ -120,12 +135,15 @@ def main(argv=None):
     if not breaking_path.exists() or not surface_path.exists():
         raise SystemExit(f"E2 needs E1 outputs: {breaking_path} and {surface_path}. Run E1 first.")
     breaking = C.load_yaml(breaking_path)["breaking_cells"]
-    surface = C.load_yaml(surface_path)["cells"]
+    surface_doc = C.load_yaml(surface_path)
+    surface = surface_doc["cells"]
+    probe_key = C.resolve_probe_key(args.probe_key, surface_doc, args.model)
+    heads_key = args.heads_from or args.model
 
     panel_reg = P.load_panel(paths_cfg)
     P.ensure_reuse_on_path(paths_cfg)
     det = detect.load_detection(
-        P.detection_dir(paths_cfg), P.resolve_model_key(paths_cfg, args.model),
+        P.detection_dir(paths_cfg), P.resolve_model_key(paths_cfg, heads_key),
         int(paths_cfg["detection_artifacts"]["seed"]),
     )
     detector = args.detector or (ref_dist.get("detector", "argmax")
@@ -137,7 +155,11 @@ def main(argv=None):
         attn_implementation=decoding_cfg["attn_implementation"]["capture"],
         dtype=decoding_cfg["dtype"],
     )
-    factory = ProbeFactory(tokenizer, grid_cfg, args.model)
+    factory = ProbeFactory(tokenizer, grid_cfg, probe_key)
+    if probe_key != args.model or heads_key != args.model:
+        log.info("variant run: probes built under key '%s', heads from '%s'.",
+                 probe_key, heads_key)
+    grades_by_cell: dict = {}       # filled only with --save-grades
 
     per_head_acc: dict = {}         # (l,h) -> {"success_needle":[], "failure_needle":[], buckets Counter}
     sample_bucket_counts = {b: 0 for b in list(classify.BUCKETS) + [WINDOW_LIMITED]}
@@ -177,6 +199,9 @@ def main(argv=None):
             g = grading.grade_generation(gen.text, probe.needle_value, probe.distractor_values)
             grades_by_sample[i] = g
             (succ if g.correct else fail).append(i)
+        if args.save_grades:
+            grades_by_cell[h] = [[int(grades_by_sample[i].correct), grades_by_sample[i].grade]
+                                 for i in range(n)]
 
         # Exclusion check BEFORE the expensive capture (a near-ceiling model
         # excludes most cells; capturing them would waste huge GPU time).
@@ -224,9 +249,16 @@ def main(argv=None):
                 acc = per_head_acc.setdefault((l, hh), {
                     "success_needle": [], "failure_needle": [],
                     "buckets": {b: 0 for b in list(classify.BUCKETS) + [WINDOW_LIMITED]}})
-                acc["success_needle"].append(masses_by_sample[si][(l, hh)].needle_mass)
-                acc["failure_needle"].append(masses_by_sample[fi][(l, hh)].needle_mass)
-                bucket = _classify_head(masses_by_sample[fi][(l, hh)], cell_ref[(l, hh)], rules)
+                ms, mf = masses_by_sample[si][(l, hh)], masses_by_sample[fi][(l, hh)]
+                # A local-layer head that cannot see the needle has needle mass 0 in
+                # both members by construction (window truncation is not a
+                # mechanism, §8): such pairs are left out of the paired comparison,
+                # as they are out of the taxonomy. Only Gemma-2 has such heads; for
+                # every other model window_limited is always False (no change).
+                if not (ms.window_limited or mf.window_limited):
+                    acc["success_needle"].append(ms.needle_mass)
+                    acc["failure_needle"].append(mf.needle_mass)
+                bucket = _classify_head(mf, cell_ref[(l, hh)], rules)
                 acc["buckets"][bucket] += 1
             # sample-level bucket for the failure sample, over the NON-window-
             # limited top-k heads only (§8). A single local head beyond its
@@ -284,7 +316,11 @@ def main(argv=None):
                "detector": detector, "seed_override": args.seed,
                "m2_min_distractor_mass_override": m2_floor_override,
                "is_primary_analysis": m2_floor_override is None and args.tag is None,
-               "effective_attn": mcfg.get("effective_attn")},
+               "effective_attn": mcfg.get("effective_attn"),
+               # follow-up experiment B (None/identical for every original run)
+               "heads_from": heads_key, "probe_key": probe_key,
+               "quantization": mcfg.get("quantization"),
+               "e1_cells_transferred_from": surface_doc.get("transferred_from")},
     )
     out = {
         "provenance": provenance,
@@ -302,6 +338,10 @@ def main(argv=None):
         # the pairs the mechanism was measured on.
         "pairs_by_cell": pairs_by_cell,
     }
+    if args.save_grades:
+        # [correct, behavioural grade] for EVERY graded sample index of every
+        # breaking cell (including cells later excluded by pair_min).
+        out["grades_by_cell"] = grades_by_cell
     suffix = f"_{args.tag}" if args.tag else ""
     C.write_json(results_dir / f"e2_signatures_{args.model}{suffix}.json", out)
     log.info("E2 done: %d cells, %d pairs.", len(cells_used), pairs_used)

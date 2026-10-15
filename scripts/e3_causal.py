@@ -51,7 +51,7 @@ def _cellspec(ax: dict, rec: dict | None = None) -> CellSpec:
                     int(ax["n_distractors"]), ax["similarity"])
 
 
-def _pairs_from_e2(e2: dict, factory, cell, h: str, seed: int):
+def _pairs_from_e2(e2: dict, factory, cell, h: str, seed: int, keep=None):
     """READ the matched (success, failure) pairs E2 measured the mechanism on.
 
     E3 must NOT re-derive the pairs by re-grading. Grading batches through
@@ -72,9 +72,12 @@ def _pairs_from_e2(e2: dict, factory, cell, h: str, seed: int):
     # Carries the SAMPLE INDICES alongside the probes: they are the only stable key
     # for a probe across processes (id() is a memory address), so the baseline
     # checkpoint can be keyed by them and survive a restart.
+    # ``keep`` (a set of (success_idx, failure_idx), --max-pairs) filters BEFORE the
+    # probes are built, so an unselected pair costs nothing.
     return [(int(si), factory.build(cell, int(si), seed),
              int(fi), factory.build(cell, int(fi), seed))
-            for si, fi in pairs.get(h, [])]
+            for si, fi in pairs.get(h, [])
+            if keep is None or (int(si), int(fi)) in keep]
 
 
 def _grade_plain(model, tokenizer, probe, decoding_cfg) -> bool:
@@ -111,7 +114,36 @@ def _site_units(heads, site, n_q, n_kv):
     return {l for (l, _h) in heads}
 
 
-def _control_heads(det, treatment_heads, site, seed, model):
+def _control_heads_layer_matched(det, treatment_heads, seed, model):
+    """Follow-up G: for every treated head, a non-retrieval query head drawn from
+    the SAME layer (nearest layer with a free non-retrieval head if that layer has
+    none left), without replacement. Separates "these heads" from "these layers"."""
+    rng = random.Random(seed)
+    n_layers = int(model.config.num_hidden_layers)
+    by_layer: dict = {}
+    for (l, h) in det.non_retrieval_heads(detector="argmax"):
+        by_layer.setdefault(l, []).append((l, h))
+    for l in by_layer:
+        by_layer[l].sort()
+    chosen: list = []
+    for (l, _h) in treatment_heads:
+        for dl in sorted(range(n_layers), key=lambda x: (abs(x - l), x)):
+            free = [lh for lh in by_layer.get(dl, []) if lh not in chosen]
+            if free:
+                chosen.append(rng.choice(free))
+                break
+    return chosen
+
+
+def _control_heads(det, treatment_heads, site, seed, model, mode="random"):
+    """Dispatch: the pre-specified random control, or (follow-up G, z_h only) a
+    layer-matched control."""
+    if mode == "layer" and site == "z_h":
+        return _control_heads_layer_matched(det, treatment_heads, seed, model)
+    return _control_heads_random(det, treatment_heads, site, seed, model)
+
+
+def _control_heads_random(det, treatment_heads, site, seed, model):
     """Representative query heads whose SITE-units are disjoint from the treatment
     units and match their COUNT (a fair random control at that site):
       z_h : k random non-retrieval query heads (the pre-registered control).
@@ -215,10 +247,38 @@ def main(argv=None):
     ap.add_argument("--k-list", type=int, nargs="*", default=None,
                     help="override the config k_list for THIS run (e.g. --k-list 10 30 "
                          "for the site follow-up). Combined with --extra-k.")
+    # ---- follow-up experiment B (quantized variants); defaults = old behaviour ----
+    ap.add_argument("--heads-from", default=None,
+                    help="EXPLORATORY: patch the head list (and draw controls from the "
+                         "non-retrieval heads) of THIS model's detection artifact instead "
+                         "of --model's own. Requires --tag.")
+    ap.add_argument("--probe-key", default=None,
+                    help="model key the ProbeFactory is built with (default: the "
+                         "'probe_key' recorded in the E1 surface file, else --model).")
+    ap.add_argument("--e2-tag", default=None,
+                    help="read the pairs from e2_signatures_<model>_<E2_TAG>.json (a tagged "
+                         "E2 variant, e.g. the NF4 run with transferred heads). Requires --tag.")
+    ap.add_argument("--allow-other-heads", action="store_true",
+                    help="patch a head list other than the one the E2 artifact measured its "
+                         "signature with (follow-up F-3: the Part II-task list on the same "
+                         "pairs; E2's pairs do not depend on the head list). Requires --tag.")
+    ap.add_argument("--control-mode", choices=["random", "layer"], default="random",
+                    help="random: k non-retrieval heads from any layer (the pre-specified "
+                         "control); layer: one non-retrieval head from the SAME layer per "
+                         "treated head (follow-up G). 'layer' requires --tag.")
+    ap.add_argument("--max-pairs", type=int, default=None,
+                    help="EXPLORATORY compute budget: patch only a deterministic round-robin "
+                         "subsample (over cells) of E2's recorded pairs. Requires --tag; the "
+                         "selection is recorded in provenance.")
     args = ap.parse_args(argv)
     if args.site != "z_h" and not args.tag:
         raise SystemExit("--site v/mlp requires --tag (so the exploratory site run is "
                          "written to a separate file, not over the pre-registered z_h run).")
+    if args.control_mode != "random" and not args.tag:
+        raise SystemExit("--control-mode layer requires --tag.")
+    C.require_tag_for_variant(args, "heads_from", "e2_tag", "max_pairs", "allow_other_heads")
+    variant = bool(args.heads_from or args.e2_tag or args.max_pairs
+                   or args.control_mode != "random")
     t_start = time.time()
 
     grid_cfg = C.load_yaml(C.config_path("grid.yaml"))
@@ -243,27 +303,42 @@ def main(argv=None):
     site = args.site
     # A non-z_h site is a different intervention, so it gets its OWN checkpoint dir
     # and output file - it never touches the pre-registered z_h run.
-    exp_name = "e3" if site == "z_h" else f"e3_{args.tag}"
+    # A variant (other head list / other E2 artifact) is a different analysis even
+    # at z_h, so it also gets its own checkpoint directory: the checkpoint
+    # fingerprint hashes configs + SHA + seed only, and a quantized variant shares
+    # its parent's SHA, so sharing a directory would silently reuse wrong cells.
+    exp_name = "e3" if (site == "z_h" and not variant) else f"e3_{args.tag}"
 
     C.set_global_seed(seed)
     results_dir = Path(paths_cfg["output"]["results_dir"])
-    e2_path = results_dir / f"e2_signatures_{args.model}.json"
+    e2_suffix = f"_{args.e2_tag}" if args.e2_tag else ""
+    e2_path = results_dir / f"e2_signatures_{args.model}{e2_suffix}.json"
     if not e2_path.exists():
         raise SystemExit(f"E3 needs E2 output {e2_path}. Run E2 first.")
     e2 = C.load_yaml(e2_path)
     cells_used = e2["cells_used"]
-    surface = C.load_yaml(results_dir / f"e1_surface_{args.model}.json")["cells"]
+    surface_doc = C.load_yaml(results_dir / f"e1_surface_{args.model}.json")
+    surface = surface_doc["cells"]
+    probe_key = C.resolve_probe_key(args.probe_key, surface_doc, args.model)
+    heads_key = args.heads_from or args.model
+    e2_extra = e2.get("provenance", {}).get("extra", {}) if isinstance(e2.get("provenance"), dict) else {}
+    e2_heads = e2_extra.get("heads_from")
+    if e2_heads and e2_heads != heads_key and not args.allow_other_heads:
+        raise SystemExit(
+            f"head-list mismatch: {e2_path.name} measured the mechanism with heads from "
+            f"'{e2_heads}' but this E3 run would patch heads from '{heads_key}'. Pass the "
+            "same --heads-from to both.")
 
     panel_reg = P.load_panel(paths_cfg)
     P.ensure_reuse_on_path(paths_cfg)
     det = detect.load_detection(P.detection_dir(paths_cfg),
-                                P.resolve_model_key(paths_cfg, args.model),
+                                P.resolve_model_key(paths_cfg, heads_key),
                                 int(paths_cfg["detection_artifacts"]["seed"]))
     model, tokenizer, mcfg = P.load_model(
         paths_cfg, panel_reg, args.model,
         attn_implementation=decoding_cfg["attn_implementation"]["patching"],
         dtype=decoding_cfg["dtype"])
-    factory = ProbeFactory(tokenizer, grid_cfg, args.model)
+    factory = ProbeFactory(tokenizer, grid_cfg, probe_key)
 
     max_k = max(k_list)
     n_detected = len(det._ranked("argmax"))
@@ -299,12 +374,18 @@ def main(argv=None):
     # includes patching.py - this invalidates the OLD (structurally-null) v
     # checkpoints while leaving the completed z_h sweep untouched.
     extra_src = [C.REPO_ROOT / "src/failure_mech/patching.py"] if site != "z_h" else []
+    # A variant's checkpoints also depend on its head list, E2 artifact and pair
+    # budget; fold them into the fingerprint so changing any of them between
+    # sessions recomputes instead of reusing cells from another pair set. The
+    # original (non-variant) fingerprint is unchanged, so finished sweeps resume.
+    fp_seed = (f"{seed}|heads={heads_key}|e2={e2_path.name}|max_pairs={args.max_pairs}"
+               f"|control={args.control_mode}" if variant else seed)
     ckpt = C.CheckpointManager(
         results_dir, exp_name, args.model, fresh=args.fresh,
         fingerprint=C.probe_fingerprint(
             [C.config_path("e3.yaml"), C.config_path("grid.yaml"),
              C.config_path("decoding.yaml"), PR.resolve_prereg_path(args.prereg)],
-            mcfg["revision"], seed, extra_sources=extra_src))
+            mcfg["revision"], fp_seed, extra_sources=extra_src))
 
     # ---- Precompute pairs + unpadded baselines ONCE (independent of k) -------
     # Pairs depend only on (cell, seed); baselines and the no-patch rerun depend
@@ -315,9 +396,21 @@ def main(argv=None):
     # Baselines are 4 plain generations per pair and survive a restart unchanged,
     # so they are checkpointed too: a resumed session must not pay for them twice.
     base_ck = ckpt.load_cell("baselines")["result"] if ckpt.is_done("baselines") else None
+    keep_by_cell = None
+    n_pairs_expected = int(e2["pairs_used"])
+    if args.max_pairs:
+        chosen = C.select_pairs_round_robin(e2.get("pairs_by_cell", {}), cells_used,
+                                            args.max_pairs)
+        keep_by_cell = {}
+        for (h, si, fi) in chosen:
+            keep_by_cell.setdefault(h, set()).add((si, fi))
+        n_pairs_expected = len(chosen)
+        log.info("--max-pairs %d: patching %d of E2's %d pairs (round-robin over cells).",
+                 args.max_pairs, len(chosen), int(e2["pairs_used"]))
     for h in cells_used:
         cell = _cellspec(surface[h]["axes"], surface[h])
-        pairs = _pairs_from_e2(e2, factory, cell, h, seed)
+        pairs = _pairs_from_e2(e2, factory, cell, h, seed,
+                               keep=None if keep_by_cell is None else keep_by_cell.get(h, set()))
         cell_pairs[h] = pairs
         for (si, sp, fi, fp) in pairs:
             for idx, probe in ((si, sp), (fi, fp)):
@@ -343,11 +436,12 @@ def main(argv=None):
     # Fail loudly rather than report a causal claim over a different pair set.
     n_pairs_e3 = sum(len(p) for p in cell_pairs.values())
     n_pairs_e2 = int(e2["pairs_used"])
-    if n_pairs_e3 != n_pairs_e2:
+    if n_pairs_e3 != n_pairs_expected:
         raise SystemExit(
-            f"pair-set mismatch: E2 measured {n_pairs_e2} pairs, E3 loaded {n_pairs_e3}. "
+            f"pair-set mismatch: expected {n_pairs_expected} pairs from E2 (pairs_used="
+            f"{n_pairs_e2}, max_pairs={args.max_pairs}), E3 loaded {n_pairs_e3}. "
             "E2's recorded pair list is the single source of truth; do not proceed.")
-    log.info("pair set: %d pairs read from E2 (matches E2's pairs_used).", n_pairs_e3)
+    log.info("pair set: %d pairs read from E2 (E2 pairs_used=%d).", n_pairs_e3, n_pairs_e2)
 
     # ---- Self-patch smoke check ONCE per model (§4.4), abort on mismatch -----
     # For a non-z_h site this is THE positive-control-in-miniature: it fails loudly
@@ -396,8 +490,8 @@ def main(argv=None):
         for k in k_list:
             rs = ctrl_seed_base + i * 7 + k
             bs = ctrl_seed_base + i * 13 + k
-            rheads_r[(i, k)] = _control_heads(det, heads_max[:k], site, rs, model)
-            rheads_b[(i, k)] = _control_heads(det, heads_max[:k], site, bs, model)
+            rheads_r[(i, k)] = _control_heads(det, heads_max[:k], site, rs, model, args.control_mode)
+            rheads_b[(i, k)] = _control_heads(det, heads_max[:k], site, bs, model, args.control_mode)
             ctrl_seeds_by_k[k].append({"pair": i, "repair_seed": rs, "break_seed": bs})
 
     # ---- Capture each probe's donor ONCE, at the UNION of every head set -------
@@ -486,6 +580,9 @@ def main(argv=None):
 
         res = _summarize(ind, margin_pp, alpha, stat_ci, seed, self_patch_ok)
         res["random_control_seeds"] = ctrl_seeds_by_k[k]
+        # per-pair 0/1 indicators (pair order = provenance pairs order), so that
+        # later comparisons (e.g. NF4 vs bf16) can bootstrap effects exactly
+        res["indicators"] = {key: [int(x) for x in vals] for key, vals in ind.items()}
         out_by_k[str(k)] = res
         ckpt.save_cell(f"k{k}", {"result": res})
         log.info("k=%d done and checkpointed (%.2f h elapsed).", k,
@@ -515,6 +612,14 @@ def main(argv=None):
                # An artifact stopped by the time budget is INCOMPLETE. Say so here
                # rather than letting a partial k-sweep read as a finished one.
                "complete": not missing,
+               # follow-up experiment B (identical to --model for every original run)
+               "heads_from": heads_key, "probe_key": probe_key,
+               "e2_artifact": e2_path.name, "quantization": mcfg.get("quantization"),
+               "max_pairs": args.max_pairs, "n_pairs_e2": n_pairs_e2,
+               "control_mode": args.control_mode,
+               "pairs_selected": ({h: sorted([list(x) for x in v]) for h, v in keep_by_cell.items()}
+                                  if keep_by_cell is not None else "all"),
+               "effective_attn": mcfg.get("effective_attn"),
                "note": "authoritative BH across 4 models x 2 directions is finalized in E4"})
     suffix = f"_{args.tag}" if args.tag else ""
     C.write_json(results_dir / f"e3_causal_{args.model}{suffix}.json",

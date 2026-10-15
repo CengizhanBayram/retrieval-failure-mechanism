@@ -276,6 +276,69 @@ def write_json(path: str | Path, data: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Follow-up experiment B: identical probes / transferred head lists
+# ---------------------------------------------------------------------------
+
+def resolve_probe_key(cli_probe_key: str | None, surface_doc: dict, model_key: str) -> str:
+    """The model key the ProbeFactory is built with.
+
+    Probes are pure functions of (cell, sample_idx, seed), but the factory's
+    value-length calibration is seeded by its model key and the cell hash
+    contains the key too. A quantized variant evaluated on its parent's cells
+    must therefore build its probes under the PARENT's key to see byte-identical
+    prompts. ``scripts/e7_quant_cells.py`` records that key as ``probe_key`` in
+    the E1-format surface file it writes, so E2/E3 pick it up automatically.
+
+    Precedence: explicit ``--probe-key`` > the surface file's ``probe_key`` >
+    ``model_key`` (the original behaviour; E1 surfaces written by E1 itself have
+    no ``probe_key`` field).
+    """
+    if cli_probe_key:
+        return cli_probe_key
+    recorded = surface_doc.get("probe_key") if isinstance(surface_doc, dict) else None
+    return recorded or model_key
+
+
+def select_pairs_round_robin(pairs_by_cell: dict, cells_used: list, max_pairs: int | None):
+    """Deterministic subsample of E2's recorded pairs: round-robin over cells (in
+    E2's ``cells_used`` order) through each cell's pair list (in recorded order)
+    until ``max_pairs`` are chosen. Returns ``[(cell_hash, success_idx,
+    failure_idx), ...]``; all pairs when ``max_pairs`` is falsy or not binding.
+    Round-robin keeps every cell represented when the budget is small, instead
+    of exhausting the first cells (the E2 order is by E1 cell hash, not random)."""
+    by_cell = {h: list(pairs_by_cell.get(h, [])) for h in cells_used}
+    total = sum(len(v) for v in by_cell.values())
+    if not max_pairs or max_pairs >= total:
+        return [(h, int(si), int(fi)) for h in cells_used for (si, fi) in by_cell[h]]
+    chosen, depth = [], 0
+    while len(chosen) < max_pairs:
+        progressed = False
+        for h in cells_used:
+            if depth < len(by_cell[h]):
+                si, fi = by_cell[h][depth]
+                chosen.append((h, int(si), int(fi)))
+                progressed = True
+                if len(chosen) >= max_pairs:
+                    break
+        if not progressed:
+            break
+        depth += 1
+    return chosen
+
+
+def require_tag_for_variant(args, *flags: str) -> None:
+    """A run that changes WHICH heads or WHICH upstream artifact is used is a
+    different analysis; it must never overwrite the primary artifact. Raise
+    unless ``--tag`` is given whenever one of ``flags`` (attribute names on
+    ``args``) is set."""
+    used = [f for f in flags if getattr(args, f, None)]
+    if used and not getattr(args, "tag", None):
+        opts = ", ".join("--" + f.replace("_", "-") for f in used)
+        raise SystemExit(f"{opts} requires --tag (the variant is written to its own "
+                         "file and checkpoint directory, never over the primary run).")
+
+
+# ---------------------------------------------------------------------------
 # Length-sorted, token-budgeted batching (§1.10)
 # ---------------------------------------------------------------------------
 

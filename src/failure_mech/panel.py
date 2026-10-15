@@ -294,10 +294,12 @@ def load_model(
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
+    quant_kwargs = quantization_kwargs(cfg, torch_dtype)
+
     def _load(attn):
         return AutoModelForCausalLM.from_pretrained(
             hf_id, revision=rev, torch_dtype=torch_dtype, device_map=device_map,
-            attn_implementation=attn, trust_remote_code=True,
+            attn_implementation=attn, trust_remote_code=True, **quant_kwargs,
         )
 
     try:
@@ -322,4 +324,57 @@ def load_model(
     cfg["head_dim"] = head_dim(model)
     cfg["requested_attn"] = requested
     cfg["effective_attn"] = getattr(model.config, "_attn_implementation", attn_implementation)
+    if quant_kwargs:
+        # Never let a "quantized" run silently be a full-precision one: the claim
+        # under test is about NF4 weights, so their presence is asserted.
+        n4 = sum(1 for m in model.modules() if type(m).__name__ == "Linear4bit")
+        if n4 == 0:
+            raise PanelError(
+                f"{cfg.get('panel_key')}: quantization_config was passed but the loaded "
+                "model has no bitsandbytes Linear4bit modules - refusing to report an "
+                "unquantized model as NF4.")
+        q = quant_kwargs["quantization_config"]
+        cfg["quantization"] = {
+            "method": cfg.get("quant"), "quant_type": q.bnb_4bit_quant_type,
+            "double_quant": bool(q.bnb_4bit_use_double_quant),
+            "compute_dtype": str(q.bnb_4bit_compute_dtype).replace("torch.", ""),
+            "n_linear4bit_modules": n4,
+        }
     return model, tokenizer, cfg
+
+
+# ---------------------------------------------------------------------------
+# Load-time quantization (follow-up experiment B)
+# ---------------------------------------------------------------------------
+
+def quantization_kwargs(cfg: dict, torch_dtype) -> dict:
+    """``from_pretrained`` kwargs for a quantized panel entry, or ``{}``.
+
+    Only ``quant: bnb4`` is supported here: bitsandbytes NF4 with double
+    quantization, the configuration the detection study used for its bnb4
+    entries (rhp/loader.py). One deliberate difference: the 4-bit COMPUTE dtype
+    is the dtype this study runs in (bf16, decoding.yaml) rather than the
+    detection study's fp16, so that against the bf16 reference model the ONLY
+    change is the weight quantization. The compute dtype is recorded in the
+    resolved cfg (``cfg['quantization']``) and therefore in every provenance
+    block.
+
+    AWQ/GPTQ entries are pre-quantized checkpoints that need a different
+    transformers stack (see the panel.yaml comment) and are refused explicitly
+    instead of silently loading the wrong weights.
+    """
+    quant = cfg.get("quant")
+    if not quant:
+        return {}
+    if quant != "bnb4":
+        raise PanelError(
+            f"Model '{cfg.get('panel_key')}' uses quant={quant!r}. Only load-time "
+            "bitsandbytes NF4 ('bnb4') is supported by this study's loader; AWQ/GPTQ "
+            "checkpoints need the separate pinned stack described in panel.yaml.")
+    try:
+        from transformers import BitsAndBytesConfig
+    except ImportError as e:  # pragma: no cover - transformers always has it
+        raise PanelError("transformers.BitsAndBytesConfig unavailable") from e
+    return {"quantization_config": BitsAndBytesConfig(
+        load_in_4bit=True, bnb_4bit_quant_type="nf4",
+        bnb_4bit_use_double_quant=True, bnb_4bit_compute_dtype=torch_dtype)}

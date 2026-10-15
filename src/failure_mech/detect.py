@@ -116,8 +116,25 @@ def artifact_path(detection_dir: str | Path, panel_key: str, seed: int) -> Path:
     return Path(detection_dir) / f"{panel_key}_seed{seed}.json"
 
 
+EXTRA_DIRS_ENV = "RFM_EXTRA_DETECTION_DIRS"
+
+
+def _resolve_artifact(detection_dir: str | Path, panel_key: str, seed: int) -> Path:
+    """The prior detector's artifact, unless an artifact with the same name exists in
+    one of the directories listed in ``$RFM_EXTRA_DETECTION_DIRS`` (os.pathsep-
+    separated). That hook is used only by the follow-up experiment F, whose
+    Part II-task head lists (keys ``<model>_taskII``) live in the results directory
+    rather than in the prior detector's repository. Unset -> original behaviour."""
+    import os
+    for d in filter(None, os.environ.get(EXTRA_DIRS_ENV, "").split(os.pathsep)):
+        cand = artifact_path(d, panel_key, seed)
+        if cand.exists():
+            return cand
+    return artifact_path(detection_dir, panel_key, seed)
+
+
 def load_detection(detection_dir: str | Path, panel_key: str, seed: int) -> Detection:
-    p = artifact_path(detection_dir, panel_key, seed)
+    p = _resolve_artifact(detection_dir, panel_key, seed)
     if not p.exists():
         raise DetectionError(
             f"Detection artifact not found: {p}. this repo consumes the prior detector "

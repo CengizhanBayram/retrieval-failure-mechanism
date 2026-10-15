@@ -241,6 +241,25 @@ def _row_for_head(
     logits = scale * torch.einsum("bd,bsd->bs", q_h.float(), K.float())  # [batch, seq]
     if softcap is not None:
         logits = softcap * torch.tanh(logits / softcap)
+    # ABSOLUTE-POSITION ALIGNMENT (fix 2026-10-15). The row must be indexed by
+    # absolute token position 0..position_id, because callers slice it with the
+    # probe's needle/distractor spans. Two cache layouts break "cache index ==
+    # position":
+    #  * window-truncated caches: HF's Gemma-2 HybridCache keeps only the LAST
+    #    ``sliding_window`` keys of a local layer once the prompt is longer than
+    #    the window (cache index i holds position n_abs - L + i). Before this fix
+    #    the row was read as if it started at position 0: misaligned by
+    #    n_abs - L tokens, and entirely -inf (NaN) once n_abs >= 2 * window,
+    #    where span slices past the row end then summed to 0.0.
+    #  * pre-allocated static caches longer than the sequence (unfilled tail).
+    n_abs = int(position_id) + 1
+    L = logits.shape[-1]
+    if L < n_abs:
+        pad = torch.full((logits.shape[0], n_abs - L), float("-inf"),
+                         device=logits.device, dtype=logits.dtype)
+        logits = torch.cat([pad, logits], dim=-1)
+    elif L > n_abs:
+        logits = logits[:, :n_abs]
     # Sliding-window mask for local layers (keys older than the window are not
     # visible at the answer step). Generalized beyond Gemma-2 (§7 fix).
     if layer_uses_sliding(model, layer):
