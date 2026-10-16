@@ -80,6 +80,16 @@ def rhp_common(root: Path):
     spec.loader.exec_module(mod)
     return mod
 
+
+def hf_files():
+    """This repository's src/failure_mech/hf_files.py, loaded from its file (it has
+    no package imports), so the clone's sys.path setup is left untouched."""
+    path = Path(__file__).resolve().parents[1] / "src" / "failure_mech" / "hf_files.py"
+    spec = importlib.util.spec_from_file_location("rfm_hf_files", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s  %(levelname)-8s  %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger("haystack_check")
@@ -204,6 +214,9 @@ def detect_heads(model_key: str, model_cfg: dict, config: dict, *, seed: int,
     t0 = time.time()
     model = tok = None
     try:
+        # Mistral-7B-v0.3: the CDN refuses tokenizer.model at the pinned commit;
+        # seed it from the byte-identical tokenizer.model.v3 (the loader is untouched).
+        hf_files().ensure_tokenizer_files(model_cfg["hf_id"], model_cfg.get("revision") or "main")
         model, tok = load_model_any(model_cfg, model_key)
         det = RetrievalHeadDetector(model, tok, config, score_threshold=threshold, seed=seed)
         a_samples = det.generate_niah_samples(n_samples, [context_length], positions)
@@ -410,6 +423,7 @@ def main(argv=None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     start = time.time()
+    failed: dict[str, str] = {}
     for key in models:
         out = out_dir / f"{key}_seed{args.seed}.json"
         if out.exists() and not args.overwrite:
@@ -419,9 +433,14 @@ def main(argv=None) -> int:
             logger.warning("time budget reached before %s; re-run to resume.", key)
             break
         assert_pool(sha)
-        res = detect_heads(key, model_cfg(config, key), config, seed=args.seed,
-                           context_length=args.context, n_samples=args.n_samples,
-                           knockout=args.knockout)
+        try:
+            res = detect_heads(key, model_cfg(config, key), config, seed=args.seed,
+                               context_length=args.context, n_samples=args.n_samples,
+                               knockout=args.knockout)
+        except Exception as exc:  # noqa: BLE001  one model must not cost the others
+            logger.exception("[%s] FAILED, continuing with the next model.", key)
+            failed[key] = f"{type(exc).__name__}: {exc}"
+            continue
         assert_pool(sha)
         stored = stored_profile(results_root, key, args.seed)
         rec = {"model": key, "seed": args.seed, "context_length": args.context,
@@ -436,6 +455,12 @@ def main(argv=None) -> int:
                         args.haystack, c["argmax"]["jaccard"], c["argmax"]["spearman_scores"],
                         c["copy"]["jaccard"], c["copy"]["spearman_scores"])
     summarize(results_root, out_root, args.seed)
+    if failed:
+        for key, err in failed.items():
+            logger.error("[%s] not done: %s", key, err[:300])
+        logger.error("%d model(s) failed (summary written for the rest). Re-run the same "
+                     "command to retry them; finished models are skipped.", len(failed))
+        return 1
     return 0
 
 

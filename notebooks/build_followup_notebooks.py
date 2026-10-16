@@ -117,10 +117,34 @@ def complete(path):
         return False
 """
 
-ANALYSIS = code(r"""
+# Self-contained: it does not need the setup cells, so it still works after a
+# runtime restart or disconnect (the earlier ``run([...])`` version raised NameError).
+ANALYSIS_SRC = r"""
 # Apply the pre-specified rules to everything that has finished so far.
-run(['scripts/followup_analysis.py'])
-""")
+# Self-contained: needs no setup cell, so it also works after a restart/disconnect.
+import os, subprocess, sys
+if not os.path.isdir('/content/drive/MyDrive'):
+    from google.colab import drive
+    drive.mount('/content/drive')
+os.environ['RFM_RESULTS_DIR'] = '/content/drive/MyDrive/rfm_results'
+D_SUMMARY = '/content/drive/MyDrive/rhprofile_results_followup/robustness/D_haystack/summary.json'
+if not os.path.isdir('/content/rope-part3'):
+    subprocess.run(['git', 'clone', 'https://github.com/CengizhanBayram/retrieval-failure-mechanism.git',
+                    '/content/rope-part3'], check=True)
+else:
+    subprocess.run(['git', '-C', '/content/rope-part3', 'pull'], check=False)
+subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', 'numpy', 'scipy', 'pyyaml'], check=False)
+args = [sys.executable, 'scripts/followup_analysis.py']
+if os.path.exists(D_SUMMARY):
+    args += ['--haystack-summary', D_SUMMARY]
+r = subprocess.run(args, cwd='/content/rope-part3', capture_output=True, text=True)
+print(r.stdout)
+if r.returncode != 0:
+    print(r.stderr)
+    raise RuntimeError(f'followup_analysis.py failed ({r.returncode}); see the error above')
+"""
+
+ANALYSIS = code(ANALYSIS_SRC)
 
 
 # ---------------------------------------------------------------------------
@@ -394,24 +418,7 @@ def nb_20_analysis() -> dict:
            "every finished follow-up output (A, B, C, E, F, G from `rfm_results`; D from the "
            "`rhprofile_results_followup` folder written by notebook 21) and writes `followup_summary.json` and "
            "`followup_report.md` next to the results. Re-run whenever new results arrive."),
-        code(r"""
-import os, subprocess, sys
-from google.colab import drive
-drive.mount('/content/drive')
-RESULTS_DIR = '/content/drive/MyDrive/rfm_results'
-D_SUMMARY = '/content/drive/MyDrive/rhprofile_results_followup/robustness/D_haystack/summary.json'
-os.environ['RFM_RESULTS_DIR'] = RESULTS_DIR
-if not os.path.isdir('/content/rope-part3'):
-    subprocess.run(['git', 'clone', 'https://github.com/CengizhanBayram/retrieval-failure-mechanism.git',
-                    '/content/rope-part3'], check=True)
-else:
-    subprocess.run(['git', '-C', '/content/rope-part3', 'pull'], check=False)
-subprocess.run(['pip', 'install', '-q', 'numpy', 'scipy', 'pyyaml'], check=False)
-args = [sys.executable, 'scripts/followup_analysis.py']
-if os.path.exists(D_SUMMARY):
-    args += ['--haystack-summary', D_SUMMARY]
-print(subprocess.run(args, cwd='/content/rope-part3', capture_output=True, text=True).stdout)
-"""),
+        ANALYSIS,
     ]
     return notebook(cells, gpu=False)
 

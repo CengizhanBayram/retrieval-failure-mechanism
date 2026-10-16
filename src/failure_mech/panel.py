@@ -290,6 +290,10 @@ def load_model(
             log.info("%s forced to eager attention (family=%s, requested %s).",
                      cfg.get("panel_key"), cfg.get("family"), requested)
 
+    # Mistral-7B-v0.3: the CDN refuses tokenizer.model (403) at the pinned commit;
+    # seed it from the byte-identical tokenizer.model.v3 (see hf_files).
+    from failure_mech.hf_files import ensure_tokenizer_files
+    ensure_tokenizer_files(hf_id, rev)
     tokenizer = AutoTokenizer.from_pretrained(hf_id, revision=rev, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
